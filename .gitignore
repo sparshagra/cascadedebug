@@ -56,3 +56,8 @@ training/checkpoints/
 !results/*.jpg
 results/*.csv
 results/tmp/
+
+# Scripts containing HF token - do not commit
+deploy_training_space.py
+patch_train_gpu.py
+train_gpu_fixed.py
