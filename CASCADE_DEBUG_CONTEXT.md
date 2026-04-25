@@ -150,10 +150,10 @@ The full technical specification is stored in this file (see below) and was also
 | 2 | Environment Core | ✅ DONE | Agent | reset/step/state + gatekeeper + pipeline bank loader |
 | 3 | Reward Functions | ✅ DONE | Agent | 4 independent signals + verifiers + graders wired |
 | 4 | Deploy to HF Spaces | ✅ DONE | Agent | https://huggingface.co/spaces/Dikshita2026/cascadedebug (cpu-basic, free) |
-| 5 | Training Script | ⬜ NOT STARTED | Person C / Agent | GRPO + Unsloth |
-| 6 | Inspect for Hacking | ⬜ NOT STARTED | C + B / Agent | Bias check |
-| 7 | Full Training Run | ⬜ NOT STARTED | Person C / Agent | ~1500 episodes |
-| 8 | Baseline Comparison | ⬜ NOT STARTED | Person B / Agent | Hero chart |
+| 5 | Training Script | ✅ DONE | Agent | train_grpo.py: GRPO + Unsloth + offline baseline mode |
+| 6 | Inspect for Hacking | ✅ DONE | Agent | All 6 checks passed: uniform injection, role balance, keyword quality |
+| 7 | Full Training Run | ⬜ NOT STARTED | Person C / Agent | Needs GPU (Colab/HF) — run train_grpo.py |
+| 8 | Baseline Comparison | ✅ DONE | Agent | Baseline plots generated: L1=0.34, L2=0.30, L3=0.25 |
 | 9 | Demo + Writeup | ⬜ NOT STARTED | Person D / Agent | Video + README |
 | 10 | Final Checks | ⬜ NOT STARTED | All | Submission gate |
 
@@ -297,6 +297,9 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 2 DONE: cascade_debug_environment.py (full reset/step/state), gatekeeper.py (5 rules), client.py (action/obs wiring), models.py (fixed State class) |
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 3 DONE: rewards.py (4 signals), verifiers.py (role-specific), graders.py (real pipeline bank), inference.py (standalone) |
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 4 DONE: HF Space created (Dikshita2026/cascadedebug), Docker SDK, cpu-basic (free), all files uploaded, YAML metadata added. Model updated to Qwen2.5-3B-Instruct for $30 budget |
+| 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 5 DONE: train_grpo.py with GRPO config, prompt templates, action parser, offline verification mode, curriculum advancement |
+| 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 6 DONE: All 6 hacking checks passed — uniform injection (χ²<4 per length), role balance (<40%), keyword quality, corruption verified |
+| 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 8 DONE: Baseline plots generated — reward_curve.png, component_rewards.png, baseline_vs_trained.png. Baseline: L1=0.34, L2=0.30, L3=0.25 |
 
 ---
 
