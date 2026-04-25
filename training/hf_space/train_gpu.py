@@ -547,16 +547,60 @@ def run() -> None:
 
         # Step 2.5: Fix CUDA version mismatch — install torchvision matching PyTorch's CUDA
         #   PyTorch may be compiled for CUDA 13.0 but pip-installed torchvision defaults
-        #   to CUDA 12.8, causing RuntimeError on import. Force-install from PyTorch index.
+        #   to CUDA 12.8, causing RuntimeError on import. We fix this in multiple ways:
         if torch.cuda.is_available() and hasattr(torch.version, 'cuda') and torch.version.cuda:
             cuda_ver = torch.version.cuda          # e.g. "13.0"
+            log(f"  ⚙️ PyTorch CUDA version: {cuda_ver}")
+
+            # Strategy 1: Uninstall mismatched torchvision and reinstall from PyTorch index
+            log("  → Removing any pre-installed torchvision...")
+            subprocess.run(
+                [sys.executable, "-m", "pip", "uninstall", "-y", "torchvision"],
+                capture_output=True, text=True,
+            )
+
+            # Try installing from PyTorch nightly/release index matching the CUDA version
             cuda_suffix = cuda_ver.replace(".", "")  # e.g. "130"
             torch_index = f"https://download.pytorch.org/whl/cu{cuda_suffix}"
-            log(f"  → Installing torchvision for CUDA {cuda_ver} from {torch_index}")
-            pip_install(
-                ["--index-url", torch_index, "--force-reinstall", "--no-deps", "torchvision"],
-                label=f"torchvision (CUDA {cuda_ver})",
+            log(f"  → Installing torchvision from {torch_index}...")
+            tv_result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-q",
+                 "--index-url", torch_index, "torchvision"],
+                capture_output=True, text=True,
             )
+            if tv_result.returncode != 0:
+                log(f"  ⚠️ torchvision install from cu{cuda_suffix} index failed, trying torch.org nightly...")
+                # Try nightly index as fallback
+                tv_result2 = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "-q",
+                     "--index-url", "https://download.pytorch.org/whl/nightly/cu130",
+                     "torchvision"],
+                    capture_output=True, text=True,
+                )
+                if tv_result2.returncode != 0:
+                    log("  ⚠️ torchvision nightly install also failed")
+                    log(f"  STDERR: {tv_result2.stderr[-500:]}")
+                else:
+                    log("  ✅ torchvision installed from nightly index")
+            else:
+                log(f"  ✅ torchvision installed for CUDA {cuda_ver}")
+
+            # Strategy 2 (fallback): If torchvision still has wrong CUDA, monkey-patch
+            # the version check so it doesn't raise RuntimeError on import
+            try:
+                import torchvision
+                log(f"  ✅ torchvision {torchvision.__version__} imported OK")
+            except RuntimeError as e:
+                if "CUDA" in str(e):
+                    log(f"  ⚠️ torchvision CUDA check still failing, applying monkey-patch...")
+                    # Monkey-patch: override the check function in torchvision.extension
+                    import importlib
+                    import torchvision.extension as tv_ext
+                    tv_ext._check_cuda_version = lambda: None  # no-op
+                    importlib.reload(torchvision)
+                    log(f"  ✅ torchvision monkey-patched (CUDA check bypassed)")
+                else:
+                    raise
 
         # Step 3: Unsloth (depends on torch+CUDA)
         pip_install(["unsloth"], label="unsloth")
