@@ -26,22 +26,16 @@ class CascadeDebugEnv(
     Each client instance has its own dedicated environment session on the server.
 
     Example:
-        >>> # Connect to a running server
-        >>> with CascadeDebugEnv(base_url="http://localhost:8000") as client:
-        ...     result = client.reset()
-        ...     print(result.observation.echoed_message)
-        ...
-        ...     result = client.step(CascadeDebugAction(message="Hello!"))
-        ...     print(result.observation.echoed_message)
-
-    Example with Docker:
-        >>> # Automatically start container and connect
-        >>> client = CascadeDebugEnv.from_docker_image("cascade_debug-env:latest")
-        >>> try:
-        ...     result = client.reset()
-        ...     result = client.step(CascadeDebugAction(message="Test"))
-        ... finally:
-        ...     client.close()
+        >>> with CascadeDebugEnv(base_url="http://localhost:7860").sync() as client:
+        ...     obs = client.reset()
+        ...     print(obs.pipeline)
+        ...     result = client.step(CascadeDebugAction(
+        ...         fault_step_id=1,
+        ...         blame_role="Researcher",
+        ...         fix_content="Python uses 0-based indexing.",
+        ...         action_type="submit"
+        ...     ))
+        ...     print(result.reward)
     """
 
     def _step_payload(self, action: CascadeDebugAction) -> Dict:
@@ -55,7 +49,10 @@ class CascadeDebugEnv(
             Dictionary representation suitable for JSON encoding
         """
         return {
-            "message": action.message,
+            "fault_step_id": action.fault_step_id,
+            "blame_role": action.blame_role,
+            "fix_content": action.fix_content,
+            "action_type": action.action_type,
         }
 
     def _parse_result(self, payload: Dict) -> StepResult[CascadeDebugObservation]:
@@ -70,8 +67,12 @@ class CascadeDebugEnv(
         """
         obs_data = payload.get("observation", {})
         observation = CascadeDebugObservation(
-            echoed_message=obs_data.get("echoed_message", ""),
-            message_length=obs_data.get("message_length", 0),
+            pipeline=obs_data.get("pipeline", []),
+            task_brief=obs_data.get("task_brief", ""),
+            turn=obs_data.get("turn", 1),
+            gatekeeper_feedback=obs_data.get("gatekeeper_feedback"),
+            curriculum_level=obs_data.get("curriculum_level", 1),
+            pipeline_id=obs_data.get("pipeline_id", ""),
             done=payload.get("done", False),
             reward=payload.get("reward"),
             metadata=obs_data.get("metadata", {}),
@@ -91,9 +92,10 @@ class CascadeDebugEnv(
             payload: JSON response from state request
 
         Returns:
-            State object with episode_id and step_count
+            State object with episode_id, step_count, and metadata
         """
         return State(
             episode_id=payload.get("episode_id"),
             step_count=payload.get("step_count", 0),
+            metadata=payload.get("metadata", {}),
         )

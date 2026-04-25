@@ -9,7 +9,7 @@ negotiate surgical fixes with a deterministic gatekeeper.
 from typing import Literal, Optional
 
 from openenv.core.env_server.types import Action, Observation
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 
 class CascadeDebugAction(Action):
@@ -100,7 +100,7 @@ class CascadeDebugObservation(Observation):
     )
 
 
-class CascadeDebugState(Field):
+class CascadeDebugState(BaseModel):
     """
     Full internal state — includes ground truth. Never sent to agent.
     Available via env.state for logging and debugging only.

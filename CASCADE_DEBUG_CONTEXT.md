@@ -16,9 +16,9 @@
 - **Workspace:** `c:\Users\SPARS\Desktop\IIIT B\scalarHackathon`
 - **Conversation ID (initial):** 20614897-4a98-488b-838e-722ac8add5f0
 - **Team:** 2 people (Sparsh + teammate) — no fixed phase ownership, both push/pull freely
-- **HuggingFace username:** `sparshagra51` (NEW account for credits)
-- **HF Space URL (submission URL — NEVER change after Phase 4):** `https://huggingface.co/spaces/sparshagra51/cascadedebug`
-- **HF API Key:** Placeholder — user to add after claiming credits onsite (25th/26th April)
+- **HuggingFace username:** `Dikshita2026`
+- **HF Space URL (submission URL — NEVER change after Phase 4):** `https://huggingface.co/spaces/Dikshita2026/cascadedebug`
+- **HF API Key:** ✅ Configured (Write token)
 - **GitHub username:** sparshagra
 - **GitHub Repo:** https://github.com/sparshagra/cascadedebug
 
@@ -120,16 +120,17 @@ The full technical specification is stored in this file (see below) and was also
 
 ---
 
-## 🤖 Model Selection Decision (FINALIZED)
+## 🤖 Model Selection Decision (UPDATED — Budget Optimized)
 
-- **HuggingFace credits available onsite (25th & 26th)** — not constrained to cheapest model
-- **Primary choice:** `Qwen2.5-7B-Instruct`
-  - Best balance of reasoning quality + rollout speed for structured output tasks
-  - 4bit via Unsloth fits on A10G; strong instruction following → non-zero r1 from episode 1
-  - Strong at JSON/structured format → critical for parsing `fault_step_id`, `blame_role`, `fix_content`
-- **Upgrade option (if A100 available):** `Llama-3.1-8B-Instruct` or `Qwen2.5-14B-Instruct`
-- **Fallback (if VRAM constrained):** `Qwen2.5-3B-Instruct`
-- **DO NOT use:** models >14B without A100 — rollout speed bottlenecks GRPO training
+- **Budget:** $30 HF credits — must maximize training episodes per dollar
+- **Primary choice:** `Qwen2.5-3B-Instruct` ← CHANGED for credit optimization
+  - ~3× cheaper per rollout than 7B → more training episodes per dollar
+  - Fits on any GPU (T4/A10G) with 4bit via Unsloth
+  - Strong at JSON/structured format → sufficient for parsing `fault_step_id`, `blame_role`, `fix_content`
+  - $30 on A10G (~$1.05/hr) ≈ 28 hours compute — plenty for 1500+ episodes
+- **Upgrade option (if budget remains after initial run):** `Qwen2.5-7B-Instruct`
+- **Strategy:** Train 3B first, check reward curves. If budget left + curves plateau, do short 7B run
+- **DO NOT use:** models >7B — will exhaust $30 budget before meaningful training
 - **Unsloth recipe to follow:** Advanced Qwen3 (4B) GRPO notebook pattern (proximity scoring, advanced templates)
 
 ### Logging Strategy (No WandB)
@@ -145,10 +146,10 @@ The full technical specification is stored in this file (see below) and was also
 | Phase | Name | Status | Owner | Notes |
 |-------|------|--------|-------|-------|
 | 0 | Setup & Scaffold | ✅ DONE | All | OpenEnv scaffold, git init, pushed to GitHub |
-| 1 | Pipeline Bank Generation | ⬜ NOT STARTED | Agent | 200 pipelines × 5 errors — NEXT PHASE |
-| 2 | Environment Core | ⬜ NOT STARTED | Person A / Agent | reset/step/state/gatekeeper |
-| 3 | Reward Functions | ⬜ NOT STARTED | Person B / Agent | 4 independent signals |
-| 4 | Deploy to HF Spaces | ⬜ NOT STARTED | Person D / Agent | Get URL early |
+| 1 | Pipeline Bank Generation | ✅ DONE | Agent | 1000 episodes (200×5), 10 domains, 5 error types, validated |
+| 2 | Environment Core | ✅ DONE | Agent | reset/step/state + gatekeeper + pipeline bank loader |
+| 3 | Reward Functions | ✅ DONE | Agent | 4 independent signals + verifiers + graders wired |
+| 4 | Deploy to HF Spaces | ✅ DONE | Agent | https://huggingface.co/spaces/Dikshita2026/cascadedebug (cpu-basic, free) |
 | 5 | Training Script | ⬜ NOT STARTED | Person C / Agent | GRPO + Unsloth |
 | 6 | Inspect for Hacking | ⬜ NOT STARTED | C + B / Agent | Bias check |
 | 7 | Full Training Run | ⬜ NOT STARTED | Person C / Agent | ~1500 episodes |
@@ -253,11 +254,11 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 
 | Resource | URL |
 |----------|-----|
-| GitHub Repo | TBD |
-| HuggingFace Space | TBD |
-| WandB Run | TBD |
-| Colab Notebook | TBD |
-| YouTube Demo | TBD |
+| GitHub Repo | https://github.com/sparshagra/cascadedebug |
+| HuggingFace Space | https://huggingface.co/spaces/Dikshita2026/cascadedebug |
+| WandB Run | NOT USING — local CSV + PNG |
+| Colab Notebook | TBD — Phase 5 |
+| YouTube Demo | TBD — Phase 9 |
 
 ---
 
@@ -266,15 +267,15 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 | Decision | Status | Value |
 |----------|--------|-------|
 | Hackathon guidelines | ✅ RESOLVED | Processed and integrated above |
-| Final model | ✅ RESOLVED | Qwen2.5-7B-Instruct (upgrade on credits) |
+| Final model | ✅ RESOLVED | Qwen2.5-3B-Instruct (budget-optimized for $30) |
 | Logging strategy | ✅ RESOLVED | Local CSV + .png plots committed to GitHub |
 | WandB | ✅ RESOLVED | NOT using WandB |
 | Team structure | ✅ RESOLVED | 2 people, push/pull freely, no fixed ownership |
 | Collaboration model | ✅ RESOLVED | GitHub = source of truth, context file always committed |
-| HF account | ⬜ PENDING | NEW account for credits — username to be confirmed |
+| HF account | ✅ RESOLVED | Dikshita2026 |
 | GitHub repo URL | ✅ RESOLVED | https://github.com/sparshagra/cascadedebug |
-| HF Space URL | ⬜ PENDING | https://huggingface.co/spaces/sparshagra51/cascadedebug — lock in Phase 4 |
-| HF API key | ⬜ PENDING | User to add after claiming credits onsite (25th/26th) |
+| HF Space URL | ✅ RESOLVED | https://huggingface.co/spaces/Dikshita2026/cascadedebug |
+| HF API key | ✅ RESOLVED | Write token configured |
 
 ---
 
@@ -292,6 +293,10 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 |------|----------------|---------------|
 | 2026-04-25 | 20614897-4a98-488b-838e-722ac8add5f0 | Initial spec processed, context file created, hackathon guidelines processed |
 | 2026-04-25 | 20614897-4a98-488b-838e-722ac8add5f0 | Phase 0 DONE: openenv init, scaffold built, git init, pushed to GitHub |
+| 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 1 DONE: generate_pipeline_bank.py → 1000 episodes, 10 domains, 5 error types, all validations passed |
+| 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 2 DONE: cascade_debug_environment.py (full reset/step/state), gatekeeper.py (5 rules), client.py (action/obs wiring), models.py (fixed State class) |
+| 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 3 DONE: rewards.py (4 signals), verifiers.py (role-specific), graders.py (real pipeline bank), inference.py (standalone) |
+| 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 4 DONE: HF Space created (Dikshita2026/cascadedebug), Docker SDK, cpu-basic (free), all files uploaded, YAML metadata added. Model updated to Qwen2.5-3B-Instruct for $30 budget |
 
 ---
 

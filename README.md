@@ -1,8 +1,19 @@
+---
+title: CascadeDebug
+emoji: 🔍
+colorFrom: purple
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+license: bsd-3-clause
+---
+
 # CascadeDebug 🔍
 
 > **First RL training environment for multi-agent pipeline fault localization**
 
-[![HuggingFace Space](https://img.shields.io/badge/🤗%20HuggingFace-Space-blue)](https://huggingface.co/spaces/sparshagra51/cascadedebug)
+[![HuggingFace Space](https://img.shields.io/badge/🤗%20HuggingFace-Space-blue)](https://huggingface.co/spaces/Dikshita2026/cascadedebug)
 [![OpenEnv](https://img.shields.io/badge/OpenEnv-compliant-green)](https://github.com/meta-pytorch/OpenEnv)
 
 ---
@@ -97,7 +108,7 @@ CascadeDebug is the first RL training environment that:
 
 | Resource | URL |
 |----------|-----|
-| 🤗 HuggingFace Space | https://huggingface.co/spaces/sparshagra51/cascadedebug |
+| 🤗 HuggingFace Space | https://huggingface.co/spaces/Dikshita2026/cascadedebug |
 | 📓 Colab Training Notebook | *TBD — Phase 5* |
 | 🎬 YouTube Demo (<2 min) | *TBD — Phase 9* |
 | 📝 HuggingFace Mini-Blog | *TBD — Phase 9* |
