@@ -20,7 +20,7 @@
 - **HF Space URL (submission URL — NEVER change after Phase 4):** `https://huggingface.co/spaces/sparshagra51/cascadedebug`
 - **HF API Key:** Placeholder — user to add after claiming credits onsite (25th/26th April)
 - **GitHub username:** sparshagra
-- **GitHub Repo:** TBD — to be created in Phase 0
+- **GitHub Repo:** https://github.com/sparshagra/cascadedebug
 
 ### Collaboration Model
 - Both teammates push to GitHub freely; pull before starting work
@@ -144,8 +144,8 @@ The full technical specification is stored in this file (see below) and was also
 
 | Phase | Name | Status | Owner | Notes |
 |-------|------|--------|-------|-------|
-| 0 | Setup & Scaffold | ⬜ NOT STARTED | All | Awaiting hackathon guidelines |
-| 1 | Pipeline Bank Generation | ⬜ NOT STARTED | Person B / Agent | 200 pipelines × 5 errors |
+| 0 | Setup & Scaffold | ✅ DONE | All | OpenEnv scaffold, git init, pushed to GitHub |
+| 1 | Pipeline Bank Generation | ⬜ NOT STARTED | Agent | 200 pipelines × 5 errors — NEXT PHASE |
 | 2 | Environment Core | ⬜ NOT STARTED | Person A / Agent | reset/step/state/gatekeeper |
 | 3 | Reward Functions | ⬜ NOT STARTED | Person B / Agent | 4 independent signals |
 | 4 | Deploy to HF Spaces | ⬜ NOT STARTED | Person D / Agent | Get URL early |
@@ -272,8 +272,8 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 | Team structure | ✅ RESOLVED | 2 people, push/pull freely, no fixed ownership |
 | Collaboration model | ✅ RESOLVED | GitHub = source of truth, context file always committed |
 | HF account | ⬜ PENDING | NEW account for credits — username to be confirmed |
-| GitHub repo URL | ⬜ PENDING | To be created in Phase 0 — update here when done |
-| HF Space URL | ⬜ PENDING | Depends on new HF username — lock early in Phase 4 |
+| GitHub repo URL | ✅ RESOLVED | https://github.com/sparshagra/cascadedebug |
+| HF Space URL | ⬜ PENDING | https://huggingface.co/spaces/sparshagra51/cascadedebug — lock in Phase 4 |
 | HF API key | ⬜ PENDING | User to add after claiming credits onsite (25th/26th) |
 
 ---
@@ -290,7 +290,8 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 
 | Date | Conversation ID | What was done |
 |------|----------------|---------------|
-| 2026-04-25 | 20614897-4a98-488b-838e-722ac8add5f0 | Initial spec processed, context file created, awaiting hackathon guidelines |
+| 2026-04-25 | 20614897-4a98-488b-838e-722ac8add5f0 | Initial spec processed, context file created, hackathon guidelines processed |
+| 2026-04-25 | 20614897-4a98-488b-838e-722ac8add5f0 | Phase 0 DONE: openenv init, scaffold built, git init, pushed to GitHub |
 
 ---
 
