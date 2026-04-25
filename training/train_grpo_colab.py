@@ -47,14 +47,26 @@ from pathlib import Path
 from collections import Counter
 from datetime import datetime
 
-# Clone repo
-REPO_DIR = "/content/cascadedebug"
-if not os.path.exists(REPO_DIR):
+# Detect environment and locate project root
+# Priority: /app (HF Spaces), /content/cascadedebug (Colab), script's parent dir (local)
+_script_dir = Path(__file__).resolve().parent.parent if '__file__' in dir() else Path('.')
+
+if Path("/app/data/pipeline_bank.json").exists():
+    # HF Spaces Docker environment
+    REPO_DIR = "/app"
+    print("✅ Running in HF Spaces")
+elif Path("/content/cascadedebug").exists():
+    REPO_DIR = "/content/cascadedebug"
+    os.system(f"cd {REPO_DIR} && git pull")
+    print("✅ Repo updated (Colab)!")
+elif (_script_dir / "data" / "pipeline_bank.json").exists():
+    REPO_DIR = str(_script_dir)
+    print("✅ Running locally")
+else:
+    # Colab first run — clone
+    REPO_DIR = "/content/cascadedebug"
     os.system("git clone https://github.com/sparshagra/cascadedebug.git /content/cascadedebug")
     print("✅ Repo cloned!")
-else:
-    os.system(f"cd {REPO_DIR} && git pull")
-    print("✅ Repo updated!")
 
 os.chdir(REPO_DIR)
 
