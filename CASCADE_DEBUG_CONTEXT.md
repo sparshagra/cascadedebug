@@ -152,7 +152,7 @@ The full technical specification is stored in this file (see below) and was also
 | 4 | Deploy to HF Spaces | ✅ DONE | Agent | https://huggingface.co/spaces/Dikshita2026/cascadedebug (cpu-basic, free) |
 | 5 | Training Script | ✅ DONE | Agent | train_grpo.py: GRPO + Unsloth + offline baseline mode |
 | 6 | Inspect for Hacking | ✅ DONE | Agent | All 6 checks passed: uniform injection, role balance, keyword quality |
-| 7 | Full Training Run | ⬜ NOT STARTED | Person C / Agent | Needs GPU (Colab/HF) — run train_grpo.py |
+| 7 | Full Training Run | 🔄 READY TO RUN | Agent | Colab notebook ready — run training/CascadeDebug_GRPO_Training.ipynb on T4 |
 | 8 | Baseline Comparison | ✅ DONE | Agent | Baseline plots generated: L1=0.34, L2=0.30, L3=0.25 |
 | 9 | Demo + Writeup | ⬜ NOT STARTED | Person D / Agent | Video + README |
 | 10 | Final Checks | ⬜ NOT STARTED | All | Submission gate |
@@ -300,6 +300,7 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 5 DONE: train_grpo.py with GRPO config, prompt templates, action parser, offline verification mode, curriculum advancement |
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 6 DONE: All 6 hacking checks passed — uniform injection (χ²<4 per length), role balance (<40%), keyword quality, corruption verified |
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 8 DONE: Baseline plots generated — reward_curve.png, component_rewards.png, baseline_vs_trained.png. Baseline: L1=0.34, L2=0.30, L3=0.25 |
+| 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 7 READY: Colab script (train_grpo_colab.py) + notebook (CascadeDebug_GRPO_Training.ipynb) created, pushed to GitHub. Config: 300 steps, Qwen2.5-3B-Instruct 4bit, GRPO group=4. User needs to run on Colab T4 |
 
 ---
 
