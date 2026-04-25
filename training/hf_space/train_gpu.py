@@ -585,6 +585,11 @@ def run() -> None:
                 with open(ext_path, 'r') as f:
                     source = f.read()
 
+                # Log relevant lines for debugging
+                for i, line in enumerate(source.splitlines()):
+                    if '_check_cuda_version' in line:
+                        log(f"  [L{i+1}] {line.rstrip()}")
+
                 patched = source.replace(
                     "_check_cuda_version()",
                     "pass  # _check_cuda_version() disabled by CascadeDebug"
@@ -593,20 +598,27 @@ def run() -> None:
                     with open(ext_path, 'w') as f:
                         f.write(patched)
                     log("  ✅ torchvision CUDA check patched on disk")
+
+                    # CRITICAL: Delete .pyc cache files so Python reads our patched .py
+                    cache_dir = os.path.join(tv_location, "torchvision", "__pycache__")
+                    if os.path.isdir(cache_dir):
+                        import glob
+                        pyc_files = glob.glob(os.path.join(cache_dir, "extension*.pyc"))
+                        for pyc in pyc_files:
+                            os.remove(pyc)
+                            log(f"  🗑️ Removed cached {os.path.basename(pyc)}")
                     return True
                 else:
-                    log("  ℹ️ _check_cuda_version() not found (already patched or different format)")
-                    # Try alternative pattern — some versions use different formatting
-                    for pattern in ["_check_cuda_version ()", "_check_cuda_version()  # noqa"]:
-                        alt_patched = source.replace(pattern, "pass  # CascadeDebug")
-                        if alt_patched != source:
-                            with open(ext_path, 'w') as f:
-                                f.write(alt_patched)
-                            log(f"  ✅ Patched with alt pattern: {pattern}")
-                            return True
+                    log("  ℹ️ _check_cuda_version() not found in source")
+                    # Show last 5 lines of the file to debug
+                    lines = source.strip().splitlines()
+                    for line in lines[-5:]:
+                        log(f"  [end] {line.rstrip()}")
                     return False
             except Exception as e:
                 log(f"  ⚠️ Patch failed: {e}")
+                import traceback
+                log(f"  {traceback.format_exc()[-500:]}")
                 return False
 
         if _cuda_ver:
