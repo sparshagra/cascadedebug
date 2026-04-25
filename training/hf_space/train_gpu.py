@@ -545,25 +545,24 @@ def run() -> None:
         if torch.cuda.is_available():
             log(f"  GPU: {torch.cuda.get_device_name(0)}")
 
-        # Step 2.5: Fix CUDA version mismatch — install torchvision matching PyTorch's CUDA
-        #   PyTorch may be compiled for CUDA 13.0 but pip-installed torchvision defaults
-        #   to CUDA 12.8, causing RuntimeError on import.
-        #
-        #   The check happens at MODULE LEVEL in torchvision/extension.py (line ~92):
-        #     _check_cuda_version()  ← called during import, cannot be caught normally
-        #
-        #   Fix: Pre-patch the check function BEFORE torchvision is imported by:
-        #   1. Import the extension module source and neutralize the check
-        #   2. If that fails, remove torchvision entirely and install matching version
+        # Step 2.5: Detect CUDA version for later patching
+        _cuda_ver = None
         if torch.cuda.is_available() and hasattr(torch.version, 'cuda') and torch.version.cuda:
-            cuda_ver = torch.version.cuda          # e.g. "13.0"
-            log(f"  ⚙️ PyTorch CUDA version: {cuda_ver}")
+            _cuda_ver = torch.version.cuda
+            log(f"  ⚙️ PyTorch CUDA version: {_cuda_ver}")
 
-            # Strategy: Pre-patch torchvision's CUDA check before it runs
-            # The check runs at MODULE LEVEL during import, so we patch the .py file on disk
-            log("  → Pre-patching torchvision CUDA version check...")
+        # Step 3: Unsloth (depends on torch+CUDA)
+        pip_install(["unsloth"], label="unsloth")
+
+        # Step 3.5: CRITICAL — Patch torchvision AFTER unsloth install (which may
+        #   reinstall torchvision) but BEFORE importing unsloth (which triggers the
+        #   torchvision import chain).
+        #
+        #   Error chain: unsloth → transformers → torchvision → _check_cuda_version() → CRASH
+        #   The _check_cuda_version() runs at MODULE LEVEL, so we must patch the file on disk.
+        def _patch_torchvision_cuda_check():
+            """Patch torchvision/extension.py to skip CUDA version check."""
             try:
-                # Find torchvision's install path using pip show
                 pip_show = subprocess.run(
                     [sys.executable, "-m", "pip", "show", "torchvision"],
                     capture_output=True, text=True,
@@ -573,41 +572,62 @@ def run() -> None:
                     if line.startswith("Location:"):
                         tv_location = line.split(":", 1)[1].strip()
                         break
+                if not tv_location:
+                    log("  ⚠️ torchvision not installed — skipping patch")
+                    return False
 
-                if tv_location:
-                    ext_path = os.path.join(tv_location, "torchvision", "extension.py")
-                    if os.path.exists(ext_path):
-                        log(f"  → Found torchvision/extension.py at {ext_path}")
-                        with open(ext_path, 'r') as f:
-                            source = f.read()
-                        # Replace the _check_cuda_version() call with pass
-                        patched = source.replace(
-                            "_check_cuda_version()",
-                            "pass  # _check_cuda_version() disabled by CascadeDebug"
-                        )
-                        if patched != source:
-                            with open(ext_path, 'w') as f:
-                                f.write(patched)
-                            log("  ✅ torchvision CUDA check patched on disk")
-                        else:
-                            log("  ℹ️ _check_cuda_version() call not found in source (already patched?)")
-                    else:
-                        log(f"  ⚠️ extension.py not found at {ext_path}")
+                ext_path = os.path.join(tv_location, "torchvision", "extension.py")
+                if not os.path.exists(ext_path):
+                    log(f"  ⚠️ extension.py not found at {ext_path}")
+                    return False
+
+                log(f"  → Patching {ext_path}")
+                with open(ext_path, 'r') as f:
+                    source = f.read()
+
+                patched = source.replace(
+                    "_check_cuda_version()",
+                    "pass  # _check_cuda_version() disabled by CascadeDebug"
+                )
+                if patched != source:
+                    with open(ext_path, 'w') as f:
+                        f.write(patched)
+                    log("  ✅ torchvision CUDA check patched on disk")
+                    return True
                 else:
-                    log("  ⚠️ Could not determine torchvision install location")
-            except Exception as patch_err:
-                log(f"  ⚠️ Pre-patch failed: {patch_err}, continuing anyway...")
+                    log("  ℹ️ _check_cuda_version() not found (already patched or different format)")
+                    # Try alternative pattern — some versions use different formatting
+                    for pattern in ["_check_cuda_version ()", "_check_cuda_version()  # noqa"]:
+                        alt_patched = source.replace(pattern, "pass  # CascadeDebug")
+                        if alt_patched != source:
+                            with open(ext_path, 'w') as f:
+                                f.write(alt_patched)
+                            log(f"  ✅ Patched with alt pattern: {pattern}")
+                            return True
+                    return False
+            except Exception as e:
+                log(f"  ⚠️ Patch failed: {e}")
+                return False
 
-            # Verify torchvision imports OK
+        if _cuda_ver:
+            log("\n  🔧 Patching torchvision CUDA check (post-unsloth install)...")
+            _patch_torchvision_cuda_check()
+
+            # Verify the patch works
             try:
                 import torchvision
                 log(f"  ✅ torchvision {torchvision.__version__} imported OK")
-            except Exception as tv_err:
-                log(f"  ⚠️ torchvision import failed: {tv_err}")
-                log("  → This is non-fatal, unsloth may still work without torchvision")
-
-        # Step 3: Unsloth (depends on torch+CUDA)
-        pip_install(["unsloth"], label="unsloth")
+            except RuntimeError as e:
+                if "CUDA" in str(e):
+                    log(f"  ⚠️ Patch didn't work, torchvision still fails: {e}")
+                    log("  → Trying to uninstall torchvision entirely...")
+                    subprocess.run(
+                        [sys.executable, "-m", "pip", "uninstall", "-y", "torchvision"],
+                        capture_output=True, text=True,
+                    )
+                    log("  ✅ torchvision uninstalled (unsloth should still work)")
+                else:
+                    raise
 
         import numpy as np
 
