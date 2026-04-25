@@ -38,7 +38,11 @@ except Exception as e:  # pragma: no cover
 try:
     from ..models import CascadeDebugAction, CascadeDebugObservation
     from .cascade_debug_environment import CascadeDebugEnvironment
-except ModuleNotFoundError:
+except (ImportError, ModuleNotFoundError):
+    import sys
+    from pathlib import Path
+    # Add parent dir to path for direct execution (e.g., HF Spaces Docker)
+    sys.path.insert(0, str(Path(__file__).parent.parent))
     from models import CascadeDebugAction, CascadeDebugObservation
     from server.cascade_debug_environment import CascadeDebugEnvironment
 

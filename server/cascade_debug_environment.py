@@ -27,14 +27,17 @@ from openenv.core.env_server.types import State
 
 try:
     from ..models import CascadeDebugAction, CascadeDebugObservation
-except ImportError:
+except (ImportError, ModuleNotFoundError):
+    import sys
+    from pathlib import Path as _Path
+    sys.path.insert(0, str(_Path(__file__).parent.parent))
     from models import CascadeDebugAction, CascadeDebugObservation
 
 # Import gatekeeper and rewards (sibling modules in server/)
 try:
     from .gatekeeper import evaluate_proposal
     from .rewards import compute_total_reward
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     from server.gatekeeper import evaluate_proposal
     from server.rewards import compute_total_reward
 
