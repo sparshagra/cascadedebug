@@ -1,0 +1,40 @@
+spec_version: 1
+name: cascade_debug
+description: >
+  CascadeDebug: An RL environment that trains LLMs to localize faults in
+  multi-step professional pipelines (Researcher → Coder → Analyst), attribute
+  blame, negotiate fixes with a deterministic gatekeeper, and surgically repair
+  only the faulty step. Covers Themes 1 (multi-agent negotiation), 2
+  (long-horizon recovery), and 3.1 (professional tool-using pipeline).
+type: space
+runtime: fastapi
+app: server.app:app
+port: 7860
+
+tasks:
+  - name: localize_level1
+    description: >
+      3-step pipeline, obvious errors (wrong data type, missing field,
+      clear factual error). Partial credit on localization (±1 step).
+      Goal: agent achieves >0.4 average reward.
+    difficulty: easy
+
+  - name: localize_level2
+    description: >
+      4-step pipeline, subtle errors (off-by-one, embedded false claim,
+      wrong comparison). No partial credit. Goal: >0.6 average reward.
+    difficulty: medium
+
+  - name: localize_level3
+    description: >
+      5-6 step pipeline, cross-step dependency errors. Full reward strictness.
+      Goal: >0.7 average reward.
+    difficulty: hard
+
+graders:
+  - task: localize_level1
+    function: graders:level1_grader
+  - task: localize_level2
+    function: graders:level2_grader
+  - task: localize_level3
+    function: graders:level3_grader

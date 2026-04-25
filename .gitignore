@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv
+uv.lock
+
+# Environment variables & secrets
+.env
+.env.local
+*.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and outputs (keep .gitkeep, ignore actual generated content)
+outputs/
+cascade_debug/outputs/
+*.log
+
+# Data — the pipeline bank IS committed (it's pre-computed, not too large)
+# But don't commit any intermediate generation artifacts
+data/tmp/
+
+# Training artifacts that are too large for GitHub
+training/checkpoints/
+*.bin
+*.safetensors
+*.pt
+*.ckpt
+
+# Colab / Jupyter
+.ipynb_checkpoints/
+
+# Results: COMMIT .png plots, ignore everything else
+!results/*.png
+!results/*.jpg
+results/*.csv
+results/tmp/
