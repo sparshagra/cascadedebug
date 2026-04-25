@@ -129,11 +129,11 @@ with gr.Blocks(
         """
         # CascadeDebug — GRPO Training Monitor
 
-        **Model:** `Qwen2.5-3B-Instruct` (4-bit Unsloth) &nbsp;|&nbsp;
+        **Model:** `Qwen2.5-7B-Instruct` (4-bit Unsloth) &nbsp;|&nbsp;
         **Algorithm:** GRPO &nbsp;|&nbsp;
         **GPU:** L4 (24GB VRAM) &nbsp;|&nbsp;
         **Steps:** 300 &nbsp;|&nbsp;
-        **Group size:** 4
+        **Group size:** 2
 
         > Training starts automatically. Logs and plots refresh every 5 seconds.
         > Results are pushed to `Dikshita2026/cascadedebug` on completion.

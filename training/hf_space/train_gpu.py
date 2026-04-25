@@ -62,16 +62,16 @@ DATA_DIR            = BASE_DIR / "data"
 RESULTS_DIR         = BASE_DIR / "results"
 RESULTS_DIR.mkdir(exist_ok=True)
 
-MODEL_NAME          = "unsloth/Qwen2.5-3B-Instruct-bnb-4bit"
+MODEL_NAME          = "unsloth/Qwen2.5-7B-Instruct-bnb-4bit"
 MAX_SEQ_LENGTH      = 2048
 LORA_R              = 16
 LORA_ALPHA          = 16
 
 MAX_STEPS           = 300
-NUM_GENERATIONS     = 4      # GRPO group size
-MAX_COMPLETION_LEN  = 384    # short completions → faster rollouts
+NUM_GENERATIONS     = 2      # GRPO group size (reduced for 7B VRAM)
+MAX_COMPLETION_LEN  = 256    # shorter completions → fits 7B in VRAM
 LEARNING_RATE       = 5e-6
-GRADIENT_ACCUM      = 4
+GRADIENT_ACCUM      = 8      # increased to compensate for smaller group size
 LOG_EVERY           = 5
 SAVE_EVERY          = 50
 PLOT_EVERY          = 50     # generate interim plot every N *steps*
@@ -545,6 +545,19 @@ def run() -> None:
         if torch.cuda.is_available():
             log(f"  GPU: {torch.cuda.get_device_name(0)}")
 
+        # Step 2.5: Fix CUDA version mismatch — install torchvision matching PyTorch's CUDA
+        #   PyTorch may be compiled for CUDA 13.0 but pip-installed torchvision defaults
+        #   to CUDA 12.8, causing RuntimeError on import. Force-install from PyTorch index.
+        if torch.cuda.is_available() and hasattr(torch.version, 'cuda') and torch.version.cuda:
+            cuda_ver = torch.version.cuda          # e.g. "13.0"
+            cuda_suffix = cuda_ver.replace(".", "")  # e.g. "130"
+            torch_index = f"https://download.pytorch.org/whl/cu{cuda_suffix}"
+            log(f"  → Installing torchvision for CUDA {cuda_ver} from {torch_index}")
+            pip_install(
+                ["--index-url", torch_index, "--force-reinstall", "--no-deps", "torchvision"],
+                label=f"torchvision (CUDA {cuda_ver})",
+            )
+
         # Step 3: Unsloth (depends on torch+CUDA)
         pip_install(["unsloth"], label="unsloth")
 
@@ -650,7 +663,7 @@ def run() -> None:
         log(f"\n🚀 GRPO Training started!")
         log(f"   Steps:        {MAX_STEPS}  |  Group size: {NUM_GENERATIONS}")
         log(f"   Completions:  {MAX_STEPS * NUM_GENERATIONS} total")
-        log(f"   Estimated:    ~2–3 hours on T4\n")
+        log(f"   Estimated:    ~3–4 hours on L4\n")
 
         start = time.time()
         trainer.train()

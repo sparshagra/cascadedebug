@@ -120,16 +120,16 @@ The full technical specification is stored in this file (see below) and was also
 
 ---
 
-## 🤖 Model Selection Decision (UPDATED — Budget Optimized)
+## 🤖 Model Selection Decision (UPDATED — Upgraded to 7B)
 
-- **Budget:** $30 HF credits — must maximize training episodes per dollar
-- **Primary choice:** `Qwen2.5-3B-Instruct` ← CHANGED for credit optimization
-  - ~3× cheaper per rollout than 7B → more training episodes per dollar
-  - Fits on any GPU (T4/A10G) with 4bit via Unsloth
-  - Strong at JSON/structured format → sufficient for parsing `fault_step_id`, `blame_role`, `fix_content`
-  - $30 on A10G (~$1.05/hr) ≈ 28 hours compute — plenty for 1500+ episodes
-- **Upgrade option (if budget remains after initial run):** `Qwen2.5-7B-Instruct`
-- **Strategy:** Train 3B first, check reward curves. If budget left + curves plateau, do short 7B run
+- **Budget:** $30 HF credits — must maximize training quality
+- **Primary choice:** `Qwen2.5-7B-Instruct` ← UPGRADED for better accuracy
+  - Significantly better reasoning and JSON formatting capability than 3B
+  - Fits on L4 GPU (24GB VRAM) with 4bit via Unsloth
+  - GRPO group size reduced to 2 (from 4) to fit in VRAM
+  - Gradient accumulation increased to 8 to compensate
+  - $30 on L4 (~$0.80/hr) ≈ 37 hours compute — plenty for 300 steps
+- **Previous model:** `Qwen2.5-3B-Instruct` (switched due to insufficient accuracy)
 - **DO NOT use:** models >7B — will exhaust $30 budget before meaningful training
 - **Unsloth recipe to follow:** Advanced Qwen3 (4B) GRPO notebook pattern (proximity scoring, advanced templates)
 
@@ -152,7 +152,7 @@ The full technical specification is stored in this file (see below) and was also
 | 4 | Deploy to HF Spaces | ✅ DONE | Agent | https://huggingface.co/spaces/Dikshita2026/cascadedebug (cpu-basic, free) |
 | 5 | Training Script | ✅ DONE | Agent | train_grpo.py: GRPO + Unsloth + offline baseline mode |
 | 6 | Inspect for Hacking | ✅ DONE | Agent | All 6 checks passed: uniform injection, role balance, keyword quality |
-| 7 | Full Training Run | 🔄 READY TO RUN | Agent | Colab notebook ready — run training/CascadeDebug_GRPO_Training.ipynb on T4 |
+| 7 | Full Training Run | 🔄 IN PROGRESS | Agent | Upgraded to 7B, CUDA fix applied, training on HF Space L4 |
 | 8 | Baseline Comparison | ✅ DONE | Agent | Baseline plots generated: L1=0.34, L2=0.30, L3=0.25 |
 | 9 | Demo + Writeup | ⬜ NOT STARTED | Person D / Agent | Video + README |
 | 10 | Final Checks | ⬜ NOT STARTED | All | Submission gate |
@@ -267,7 +267,7 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 | Decision | Status | Value |
 |----------|--------|-------|
 | Hackathon guidelines | ✅ RESOLVED | Processed and integrated above |
-| Final model | ✅ RESOLVED | Qwen2.5-3B-Instruct (budget-optimized for $30) |
+| Final model | ✅ RESOLVED | Qwen2.5-7B-Instruct (upgraded for accuracy) |
 | Logging strategy | ✅ RESOLVED | Local CSV + .png plots committed to GitHub |
 | WandB | ✅ RESOLVED | NOT using WandB |
 | Team structure | ✅ RESOLVED | 2 people, push/pull freely, no fixed ownership |
@@ -282,8 +282,9 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 ## 🐛 Issues & Fixes Log
 
 | Date | Issue | Fix Applied |
-|------|-------|-------------|
-| — | — | — |
+|------|-------|--------------|
+| 2026-04-25 | CUDA version mismatch: PyTorch CUDA 13.0 vs torchvision CUDA 12.8 | Detect PyTorch CUDA version at runtime, force-install matching torchvision from PyTorch index URL before importing unsloth |
+| 2026-04-25 | 3B model insufficient accuracy | Upgraded to Qwen2.5-7B-Instruct-bnb-4bit, adjusted group size 4→2, gradient accum 4→8 |
 
 ---
 
@@ -301,6 +302,7 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 6 DONE: All 6 hacking checks passed — uniform injection (χ²<4 per length), role balance (<40%), keyword quality, corruption verified |
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 8 DONE: Baseline plots generated — reward_curve.png, component_rewards.png, baseline_vs_trained.png. Baseline: L1=0.34, L2=0.30, L3=0.25 |
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 7 READY: Colab script (train_grpo_colab.py) + notebook (CascadeDebug_GRPO_Training.ipynb) created, pushed to GitHub. Config: 300 steps, Qwen2.5-3B-Instruct 4bit, GRPO group=4. User needs to run on Colab T4 |
+| 2026-04-25 | 7572fc0a-c708-41dc-bab4-25ab86731d9a | Fixed CUDA version mismatch (torchvision CUDA 12.8 vs PyTorch CUDA 13.0). Upgraded model from Qwen2.5-3B to Qwen2.5-7B-Instruct for better accuracy. Adjusted hyperparams: group_size=2, grad_accum=8, completion_len=256 |
 
 ---
 
