@@ -11,10 +11,42 @@ import sys
 import csv
 import random
 import re
+import shutil
 import time
 import queue as _queue
 import traceback
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# HARD FIX for Unsloth fast_lora RuntimeError:
+#   "self and mat2 must have the same dtype, but got Half and Float"
+#
+# Root cause: Unsloth's fast_lora kernel is wrapped with torch.amp.custom_fwd
+# which casts activations to fp16 under autocast. Meanwhile LoRA A/B stay fp32
+# (PEFT default under mixed precision). TRL's bf16=True does NOT override the
+# fp16 autocast inside Unsloth's kernel -> `out` buffer is Half, `B.to(dtype)`
+# resolves to Float -> addmm_ dtype mismatch.
+#
+# Fix (must run BEFORE `import unsloth`):
+#   - UNSLOTH_FORCE_FLOAT32=1  -> bypasses the fp16 fast_lora autocast path.
+#   - UNSLOTH_COMPILE_DISABLE=1 -> avoid torch.compile / cached graph surprises.
+#   - Wipe /app/unsloth_compiled_cache so prior fp16 compiled modules don't
+#     override the new settings on Space restart.
+# ---------------------------------------------------------------------------
+os.environ.setdefault("UNSLOTH_FORCE_FLOAT32", "1")
+os.environ.setdefault("UNSLOTH_COMPILE_DISABLE", "1")
+os.environ.setdefault("UNSLOTH_DISABLE_AUTO_UPDATES", "1")
+
+_STALE_CACHES = (
+    Path("/app/unsloth_compiled_cache"),
+    Path(__file__).parent / "unsloth_compiled_cache",
+)
+for _p in _STALE_CACHES:
+    try:
+        if _p.is_dir():
+            shutil.rmtree(_p, ignore_errors=True)
+    except Exception:
+        pass
 
 # ---------------------------------------------------------------------------
 # Shared state (read by app.py Gradio UI)
@@ -43,18 +75,13 @@ def log(msg: str) -> None:
 
 def _resolve_grpo_precision(torch_module):
     """
-    Unsloth 4-bit + GRPO + fast LoRA: fp16 autocast with float32 LoRA is easy to break
-    (RuntimeError: Half vs Float in matmul_lora). Unsloth expects LoRA A/B in float32
-    under mixed precision — do NOT downcast LoRA weights.
+    We deliberately run in float32 with NO autocast. With UNSLOTH_FORCE_FLOAT32=1
+    set above, Unsloth keeps all LoRA math in fp32 and the fp16 fast_lora
+    autocast path is skipped entirely -> no Half vs Float crash.
 
-    Fix strategy (see unslothai/unsloth PR #4005, issues #4891, #4918):
-    - Prefer bf16 end-to-end when supported (L4 / Ampere+).
-    - Never use fp16=True in TRL for this stack when bf16 is available.
-    - If bf16 is unavailable, use float32 compute + UNSLOTH_FORCE_FLOAT32 (docs).
+    VRAM cost: ~2x vs bf16. Acceptable for Qwen2.5-3B (4-bit) on L4 (22 GB).
+    Speed cost: ~1.5-2x slower. Acceptable given repeated fp16/bf16 failures.
     """
-    if torch_module.cuda.is_bf16_supported():
-        return torch_module.bfloat16, True, False
-    os.environ["UNSLOTH_FORCE_FLOAT32"] = "1"
     return torch_module.float32, False, False
 
 
@@ -591,10 +618,10 @@ def run() -> None:
         torch.cuda.empty_cache()
 
         compute_dtype, use_bf16, use_fp16 = _resolve_grpo_precision(torch)
-        if os.environ.get("UNSLOTH_FORCE_FLOAT32") == "1":
-            log("   Precision: float32 + UNSLOTH_FORCE_FLOAT32 (bf16 not available on this GPU)")
-        else:
-            log(f"   Precision: {compute_dtype} | TRL bf16={use_bf16} fp16={use_fp16}")
+        log(
+            "   Precision: float32 (UNSLOTH_FORCE_FLOAT32=1, no autocast) — "
+            "avoids Unsloth fast_lora Half/Float mismatch"
+        )
 
         # Load pipeline bank
         log("\n📦 Loading pipeline bank...")
@@ -685,7 +712,7 @@ def run() -> None:
         log(f"\n🚀 GRPO Training started!")
         log(f"   Steps: {MAX_STEPS} | Group size: {NUM_GENERATIONS}")
         log(f"   Total completions: {MAX_STEPS * NUM_GENERATIONS}")
-        log(f"   Estimated: ~2-3 hours on L4\n")
+        log(f"   Estimated: ~4-5 hours on L4 (fp32, safer kernels)\n")
 
         start = time.time()
         trainer.train()
