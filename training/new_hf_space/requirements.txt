@@ -1,13 +1,18 @@
-# Pin recent Unsloth — GRPO + 4-bit dtype fixes (e.g. PR #4005, issues #4891 / #4918).
-# Unpinned `unsloth` on HF Spaces often lags and hits matmul_lora Half vs Float.
-unsloth>=2026.4.8
-unsloth_zoo>=2026.4.9
-trl>=0.12.0
-datasets
-peft>=0.10.0
-bitsandbytes>=0.43.0
-accelerate>=0.30.0
-scipy
+# ── Hugging Face Space (Docker SDK) ─────────────────────────────────────────
+# Dependencies are installed in the Dockerfile (Python 3.11 + CUDA 12.1).
+# This file documents the intended pins for local debugging only.
+#
+# Docker install (authoritative):
+#   torch==2.5.1+cu121  (from PyTorch cu121 index)
+#   unsloth[cu121-torch251]==2025.11.4
+#
+# Local CPU-only installs will not run GRPO; use the Docker image or HF Space.
+
+unsloth[cu121-torch251]==2025.11.4
+torch==2.5.1+cu121
+torchvision==0.20.1+cu121
+torchaudio==2.5.1+cu121
+gradio>=5.25.0
 matplotlib>=3.7.0
-numpy>=1.24.0
+scipy
 huggingface_hub

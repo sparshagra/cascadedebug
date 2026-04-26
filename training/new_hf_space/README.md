@@ -3,22 +3,29 @@ title: CascadeDebug GRPO Training
 emoji: 🔬
 colorFrom: blue
 colorTo: purple
-sdk: gradio
-sdk_version: 5.25.0
-app_file: app.py
+sdk: docker
+app_port: 7860
 pinned: false
-hardware: l4x1
+suggested_hardware: l4x1
 license: mit
 ---
 
-# CascadeDebug — GRPO Training Space
+# CascadeDebug — GRPO Training (Docker Space)
 
-This Space runs GRPO training for the CascadeDebug RL environment.
+This Space uses the **Docker SDK** (not Gradio SDK) so we control the runtime:
+
+- **Python 3.11** (Gradio SDK on HF was on **3.13**, which breaks many Unsloth / Triton / bitsandbytes paths)
+- **CUDA 12.1** base image + **PyTorch 2.5.1+cu121**
+- **Unsloth `2025.11.4`** with extra **`[cu121-torch251]`** so xformers, bitsandbytes, and triton match the torch build
+
+Training still starts from `app.py` (Gradio monitor); the image runs `python3.11 app.py`.
 
 - **Model:** Qwen2.5-3B-Instruct (4-bit via Unsloth)
-- **Algorithm:** GRPO (Group Relative Policy Optimization)
-- **Steps:** 300 | **Group size:** 4
-- **GPU:** L4 (24 GB VRAM)
+- **Algorithm:** GRPO
+- **GPU:** L4 recommended (`suggested_hardware: l4x1`)
 
-Training starts automatically on boot. Reward plots refresh every 10 seconds.
-Results are pushed to `Dikshita2026/cascadedebug` on completion.
+Set **`HF_TOKEN`** in Space → Settings → Repository secrets if you want Hub push of results.
+
+### If training still hits dtype errors
+
+Add a secret or env var **`UNSLOTH_FORCE_FLOAT32=1`** — slower, but forces Unsloth off the fp16 fast-LORA autocast path.

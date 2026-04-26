@@ -1,8 +1,7 @@
 """
-CascadeDebug GRPO Training — HF Spaces (Gradio SDK + L4 GPU)
-=============================================================
-Self-contained training script. No runtime pip installs needed —
-all deps are in requirements.txt and pre-installed by the Gradio SDK.
+CascadeDebug GRPO Training — HF Space (Docker SDK + L4)
+========================================================
+Runtime: Python 3.11, Unsloth 2025.11.4, PyTorch cu121 (see Dockerfile).
 """
 
 import json
@@ -18,22 +17,10 @@ import traceback
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# HARD FIX for Unsloth fast_lora RuntimeError:
-#   "self and mat2 must have the same dtype, but got Half and Float"
-#
-# Root cause: Unsloth's fast_lora kernel is wrapped with torch.amp.custom_fwd
-# which casts activations to fp16 under autocast. Meanwhile LoRA A/B stay fp32
-# (PEFT default under mixed precision). TRL's bf16=True does NOT override the
-# fp16 autocast inside Unsloth's kernel -> `out` buffer is Half, `B.to(dtype)`
-# resolves to Float -> addmm_ dtype mismatch.
-#
-# Fix (must run BEFORE `import unsloth`):
-#   - UNSLOTH_FORCE_FLOAT32=1  -> bypasses the fp16 fast_lora autocast path.
-#   - UNSLOTH_COMPILE_DISABLE=1 -> avoid torch.compile / cached graph surprises.
-#   - Wipe /app/unsloth_compiled_cache so prior fp16 compiled modules don't
-#     override the new settings on Space restart.
+# Stabilizers (before `import unsloth`). Docker uses Python 3.11 + Unsloth
+# 2025.11.4; bf16 on L4 is the default path below. If you still see Half/Float
+# in fast_lora, set secret UNSLOTH_FORCE_FLOAT32=1 on the Space.
 # ---------------------------------------------------------------------------
-os.environ.setdefault("UNSLOTH_FORCE_FLOAT32", "1")
 os.environ.setdefault("UNSLOTH_COMPILE_DISABLE", "1")
 os.environ.setdefault("UNSLOTH_DISABLE_AUTO_UPDATES", "1")
 
@@ -75,13 +62,13 @@ def log(msg: str) -> None:
 
 def _resolve_grpo_precision(torch_module):
     """
-    We deliberately run in float32 with NO autocast. With UNSLOTH_FORCE_FLOAT32=1
-    set above, Unsloth keeps all LoRA math in fp32 and the fp16 fast_lora
-    autocast path is skipped entirely -> no Half vs Float crash.
-
-    VRAM cost: ~2x vs bf16. Acceptable for Qwen2.5-3B (4-bit) on L4 (22 GB).
-    Speed cost: ~1.5-2x slower. Acceptable given repeated fp16/bf16 failures.
+    Prefer bf16 on L4 with Py3.11 + Unsloth 2025.11.4. Never fp16 in TRL for
+    this 4-bit GRPO stack. Optional: UNSLOTH_FORCE_FLOAT32=1 -> full fp32.
     """
+    if os.environ.get("UNSLOTH_FORCE_FLOAT32") == "1":
+        return torch_module.float32, False, False
+    if torch_module.cuda.is_bf16_supported():
+        return torch_module.bfloat16, True, False
     return torch_module.float32, False, False
 
 
@@ -595,9 +582,6 @@ def run() -> None:
     training_state["status"] = "running"
 
     try:
-        # Before importing Unsloth: reduce torch.compile / cache weirdness on HF (docs.unsloth.ai env flags).
-        os.environ.setdefault("UNSLOTH_COMPILE_DISABLE", "1")
-
         log("=" * 60)
         log("CascadeDebug GRPO Training — HF Spaces L4 GPU")
         log("=" * 60)
@@ -618,10 +602,12 @@ def run() -> None:
         torch.cuda.empty_cache()
 
         compute_dtype, use_bf16, use_fp16 = _resolve_grpo_precision(torch)
-        log(
-            "   Precision: float32 (UNSLOTH_FORCE_FLOAT32=1, no autocast) — "
-            "avoids Unsloth fast_lora Half/Float mismatch"
-        )
+        if os.environ.get("UNSLOTH_FORCE_FLOAT32") == "1":
+            log("   Precision: float32 (UNSLOTH_FORCE_FLOAT32=1)")
+        elif use_bf16:
+            log("   Precision: bf16 (Py3.11 + Unsloth 2025.11.x, TRL bf16=True)")
+        else:
+            log(f"   Precision: {compute_dtype} | TRL bf16={use_bf16} fp16={use_fp16}")
 
         # Load pipeline bank
         log("\n📦 Loading pipeline bank...")
@@ -712,7 +698,7 @@ def run() -> None:
         log(f"\n🚀 GRPO Training started!")
         log(f"   Steps: {MAX_STEPS} | Group size: {NUM_GENERATIONS}")
         log(f"   Total completions: {MAX_STEPS * NUM_GENERATIONS}")
-        log(f"   Estimated: ~4-5 hours on L4 (fp32, safer kernels)\n")
+        log(f"   Estimated: ~2-4 hours on L4\n")
 
         start = time.time()
         trainer.train()
