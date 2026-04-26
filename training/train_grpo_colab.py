@@ -5,9 +5,9 @@ CascadeDebug GRPO Training — Google Colab (Phase 7)
 Use `training/colab_phase7/Phase7_GRPO_Colab.ipynb` in Google Colab, or run
 this file with:  python training/train_grpo_colab.py
 
-- Model / hyperparams match `training/hf_space/train_gpu.py` and CASCADE_DEBUG_CONTEXT
-  (Qwen2.5-7B 4bit, GRPO group=2, grad accum=8). If T4 OOMs, set MODEL_NAME to 3B below.
 - **mergekit** is required: TRL's GRPOTrainer imports it.
+- Set `PROFILE` below: `"submission"` = 3B, 90 steps (typically under 3h on Colab T4). `"full"` = 7B+300
+  steps (aligned with `train_gpu.py`, long on T4).
 """
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -24,6 +24,7 @@ print("📦 Installing dependencies...")
 subprocess.check_call([sys.executable, "-m", "pip", "install", "unsloth", "-q"])
 install("trl>=0.12.0")
 install("mergekit")
+install("huggingface_hub")
 install("datasets")
 install("matplotlib")
 install("numpy")
@@ -87,21 +88,34 @@ for level, eps in sorted(BANK_BY_LEVEL.items()):
 # CELL 3: Configuration
 # ═══════════════════════════════════════════════════════════════════════
 
-# Model — 7B 4bit (match Phase 7 / train_gpu.py). T4: if OOM, switch to 3B:
-# MODEL_NAME = "unsloth/Qwen2.5-3B-Instruct-bnb-4bit"
-MODEL_NAME = "unsloth/Qwen2.5-7B-Instruct-bnb-4bit"
+# "submission" = 3B + 90 steps + shorter completions (typ. ~1–2.5h T4, under 3h with margin)
+# "full"       = 7B + 300 steps (context / train_gpu parity; 5–7h+ on T4 is common)
+PROFILE = "submission"
+
+if PROFILE not in ("submission", "full"):
+    raise ValueError('PROFILE must be "submission" or "full"')
+
 MAX_SEQ_LENGTH = 2048
 LORA_R = 16
 LORA_ALPHA = 16
-
-# Training config — same as training/hf_space/train_gpu.py (L4 / Colab T4)
-MAX_STEPS = 300
-NUM_GENERATIONS = 2      # GRPO group size
-MAX_COMPLETION_LENGTH = 256
+NUM_GENERATIONS = 2  # GRPO group size; keep at 2
 LEARNING_RATE = 5e-6
-GRADIENT_ACCUMULATION = 8
 LOG_EVERY = 5
-SAVE_EVERY = 50
+
+if PROFILE == "full":
+    MODEL_NAME = "unsloth/Qwen2.5-7B-Instruct-bnb-4bit"
+    MAX_STEPS = 300
+    MAX_COMPLETION_LENGTH = 256
+    GRADIENT_ACCUMULATION = 8
+    SAVE_EVERY = 50
+    DATASET_SAMPLES = 500
+else:
+    MODEL_NAME = "unsloth/Qwen2.5-3B-Instruct-bnb-4bit"
+    MAX_STEPS = 90
+    MAX_COMPLETION_LENGTH = 160
+    GRADIENT_ACCUMULATION = 4
+    SAVE_EVERY = 20
+    DATASET_SAMPLES = 250
 
 # Curriculum
 CURRICULUM_THRESHOLDS = {1: 0.4, 2: 0.6, 3: 0.7}
@@ -112,7 +126,8 @@ HF_TOKEN = os.getenv("HF_TOKEN", "")  # Set in Colab: os.environ["HF_TOKEN"] = "
 HF_REPO = "Dikshita2026/cascadedebug"
 
 print(f"🤖 Model: {MODEL_NAME}")
-print(f"⚙️  Max steps: {MAX_STEPS}, Group size: {NUM_GENERATIONS}")
+print(f"⚙️  Profile: {PROFILE} | Max steps: {MAX_STEPS} | Group: {NUM_GENERATIONS} | "
+      f"completion_len: {MAX_COMPLETION_LENGTH} | grad_accum: {GRADIENT_ACCUMULATION}")
 print(f"💾 Results: {RESULTS_DIR}")
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -299,8 +314,8 @@ def build_dataset(curriculum_level, n_samples=500):
 
     return Dataset.from_list(data)
 
-train_dataset = build_dataset(curriculum_level, n_samples=500)
-print(f"✅ Training dataset: {len(train_dataset)} samples (Level {curriculum_level})")
+train_dataset = build_dataset(curriculum_level, n_samples=DATASET_SAMPLES)
+print(f"✅ Training dataset: {len(train_dataset)} samples (Level {curriculum_level}), profile={PROFILE!r}")
 
 # ═══════════════════════════════════════════════════════════════════════
 # CELL 8: GRPO Reward Wrapper
