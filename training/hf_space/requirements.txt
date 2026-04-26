@@ -20,6 +20,7 @@ gradio>=5.25.0
 
 # Training
 trl>=0.12.0
+mergekit
 datasets
 accelerate>=0.30.0
 peft>=0.10.0
