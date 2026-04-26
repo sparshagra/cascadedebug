@@ -152,7 +152,7 @@ The full technical specification is stored in this file (see below) and was also
 | 4 | Deploy to HF Spaces | ✅ DONE | Agent | https://huggingface.co/spaces/Dikshita2026/cascadedebug (cpu-basic, free) |
 | 5 | Training Script | ✅ DONE | Agent | train_grpo.py: GRPO + Unsloth + offline baseline mode |
 | 6 | Inspect for Hacking | ✅ DONE | Agent | All 6 checks passed: uniform injection, role balance, keyword quality |
-| 7 | Full Training Run | 🔄 IN PROGRESS | Agent | **Training Space live:** [cascadedebug-training](https://huggingface.co/spaces/Dikshita2026/cascadedebug-training) — L4+Gradio, `data/pipeline_bank.json` in bundle, `gradio` in requirements. Set **HF_TOKEN** in Space → Settings → Repository secrets for Hub push. |
+| 7 | Full Training Run | 🔄 IN PROGRESS | Team | **Primary path (2026-04-26):** [Google Colab](https://colab.research.google.com) + notebook `training/colab_phase7/Phase7_GRPO_Colab.ipynb` + script `training/train_grpo_colab.py` (7B, `mergekit`, same hyperparams as `train_gpu.py`). HF Spaces training optional: [cascadedebug-training](https://huggingface.co/spaces/Dikshita2026/cascadedebug-training) — set `HF_TOKEN` secret; **mergekit** required in `requirements.txt`. |
 | 8 | Baseline Comparison | ✅ DONE | Agent | Baseline plots generated: L1=0.34, L2=0.30, L3=0.25 |
 | 9 | Demo + Writeup | ⬜ NOT STARTED | Person D / Agent | Video + README |
 | 10 | Final Checks | ⬜ NOT STARTED | All | Submission gate |
@@ -181,7 +181,9 @@ cascadedebug/                         ← root of submission
 │   ├── pipeline_bank.json            # 1000 pre-computed episodes
 │   └── generate_pipeline_bank.py     # Offline generation script
 ├── training/
-│   └── train_grpo.ipynb              # Colab notebook (Unsloth + TRL GRPO)
+│   ├── colab_phase7/Phase7_GRPO_Colab.ipynb  # Phase 7 — official Colab (T4+)
+│   ├── train_grpo_colab.py           # Phase 7 Colab / %run target (7B GRPO)
+│   └── ...                           # see repo for train_grpo.py, hf_space, etc.
 ├── results/
 │   ├── reward_curve.png
 │   ├── baseline_vs_trained.png
@@ -308,6 +310,7 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 | 2026-04-25 | 7572fc0a-c708-41dc-bab4-25ab86731d9a | Fixed CUDA version mismatch (torchvision CUDA 12.8 vs PyTorch CUDA 13.0). On HF training path: model upgraded to Qwen2.5-7B-Instruct; group_size=2, grad_accum=8, completion_len=256 |
 | 2026-04-26 | (Cursor agent) | Phase 7 deploy: `training/hf_space` fixed — `data/pipeline_bank.json` in bundle, `gradio` in requirements. **Prefer fresh Space** [Dikshita2026/cascadedebug-training-v2](https://huggingface.co/spaces/Dikshita2026/cascadedebug-training-v2) (Gradio SDK, L4, 3B). **Rotate HF token** if it was shared. |
 | 2026-04-26 | (pre-Phase-7 audit) | Full repo audit: fixed torch import crash in train_grpo.py, flagged empty results/ dir (plots never committed), noted verifiers.py is dead code. All other files clean — ready for Phase 7 |
+| 2026-04-26 | (Cursor agent) | Phase 7 Colab: added `training/colab_phase7/Phase7_GRPO_Colab.ipynb`; `train_grpo_colab.py` — 7B, `mergekit`, `NUM_GENERATIONS=2`, `GRADIENT_ACCUMULATION=8`, `MAX_COMPLETION_LENGTH=256`; optional HF push only if `HF_TOKEN` set; git push best-effort. |
 
 ---
 

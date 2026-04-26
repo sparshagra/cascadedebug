@@ -1,19 +1,13 @@
 """
-CascadeDebug GRPO Training — Google Colab Script (Free T4)
-==========================================================
+CascadeDebug GRPO Training — Google Colab (Phase 7)
+===================================================
 
-INSTRUCTIONS:
-1. Open Google Colab (colab.research.google.com)
-2. Runtime → Change runtime type → T4 GPU
-3. Copy-paste this entire file into a single cell, or upload as .py
-4. Run the cell — takes ~2-4 hours on T4
+Use `training/colab_phase7/Phase7_GRPO_Colab.ipynb` in Google Colab, or run
+this file with:  python training/train_grpo_colab.py
 
-This script:
-- Installs unsloth + trl
-- Clones the CascadeDebug repo
-- Loads pipeline bank (1000 episodes)
-- Trains Qwen2.5-3B-Instruct with GRPO
-- Saves plots + model + pushes results to GitHub
+- Model / hyperparams match `training/hf_space/train_gpu.py` and CASCADE_DEBUG_CONTEXT
+  (Qwen2.5-7B 4bit, GRPO group=2, grad accum=8). If T4 OOMs, set MODEL_NAME to 3B below.
+- **mergekit** is required: TRL's GRPOTrainer imports it.
 """
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -29,6 +23,7 @@ print("📦 Installing dependencies...")
 # Unsloth for fast 4bit training
 subprocess.check_call([sys.executable, "-m", "pip", "install", "unsloth", "-q"])
 install("trl>=0.12.0")
+install("mergekit")
 install("datasets")
 install("matplotlib")
 install("numpy")
@@ -49,7 +44,7 @@ from datetime import datetime
 
 # Detect environment and locate project root
 # Priority: /app (HF Spaces), /content/cascadedebug (Colab), script's parent dir (local)
-_script_dir = Path(__file__).resolve().parent.parent if '__file__' in dir() else Path('.')
+_script_dir = Path(__file__).resolve().parent.parent if "__file__" in globals() else Path(".")
 
 if Path("/app/data/pipeline_bank.json").exists():
     # HF Spaces Docker environment
@@ -92,18 +87,19 @@ for level, eps in sorted(BANK_BY_LEVEL.items()):
 # CELL 3: Configuration
 # ═══════════════════════════════════════════════════════════════════════
 
-# Model — Qwen2.5-3B-Instruct in 4bit (fits T4 16GB)
-MODEL_NAME = "unsloth/Qwen2.5-3B-Instruct-bnb-4bit"
+# Model — 7B 4bit (match Phase 7 / train_gpu.py). T4: if OOM, switch to 3B:
+# MODEL_NAME = "unsloth/Qwen2.5-3B-Instruct-bnb-4bit"
+MODEL_NAME = "unsloth/Qwen2.5-7B-Instruct-bnb-4bit"
 MAX_SEQ_LENGTH = 2048
 LORA_R = 16
 LORA_ALPHA = 16
 
-# Training config — optimized for T4 + $30 budget
-MAX_STEPS = 300          # ~2-3 hours on T4
-NUM_GENERATIONS = 4      # GRPO group size
-MAX_COMPLETION_LENGTH = 384  # Keep short for speed
+# Training config — same as training/hf_space/train_gpu.py (L4 / Colab T4)
+MAX_STEPS = 300
+NUM_GENERATIONS = 2      # GRPO group size
+MAX_COMPLETION_LENGTH = 256
 LEARNING_RATE = 5e-6
-GRADIENT_ACCUMULATION = 4
+GRADIENT_ACCUMULATION = 8
 LOG_EVERY = 5
 SAVE_EVERY = 50
 
@@ -584,30 +580,40 @@ print("\n✅ All plots saved to results/")
 # ═══════════════════════════════════════════════════════════════════════
 print("\n📤 Pushing results...")
 
-# Push to GitHub
-os.system(f'cd {REPO_DIR} && git config user.email "dikshita@cascadedebug.ai"')
-os.system(f'cd {REPO_DIR} && git config user.name "CascadeDebug Training"')
-os.system(f'cd {REPO_DIR} && git add results/ training/')
-os.system(f'cd {REPO_DIR} && git commit -m "Phase 7: GRPO training results — {MAX_STEPS} steps on T4"')
-os.system(f'cd {REPO_DIR} && git push')
-print("   ✅ Results pushed to GitHub")
-
-# Upload plots to HF Space
+# Optional: Git push (Colab usually has no GitHub credentials — use Files sidebar → Download results/)
+print("   (Optional) GitHub push — skipped by default; download results/ if needed.")
 try:
-    from huggingface_hub import HfApi
-    api = HfApi(token=HF_TOKEN)
-    for plot_file in ["reward_curve.png", "component_rewards.png", "baseline_vs_trained.png", "localization_accuracy.png", "training_log.csv"]:
-        plot_path = RESULTS_DIR / plot_file
-        if plot_path.exists():
-            api.upload_file(
-                path_or_fileobj=str(plot_path),
-                path_in_repo=f"results/{plot_file}",
-                repo_id=HF_REPO,
-                repo_type="space",
-            )
-    print("   ✅ Results uploaded to HF Space")
-except Exception as e:
-    print(f"   ⚠️ HF upload failed (non-critical): {e}")
+    _c = subprocess.run(
+        f'cd {REPO_DIR} && git add results/ 2>/dev/null && git -c user.email=colab@local -c user.name=Colab '
+        f'commit -m "Phase 7: GRPO {MAX_STEPS} steps" 2>/dev/null && git push 2>&1',
+        shell=True, capture_output=True, text=True, timeout=120,
+    )
+    if _c.returncode == 0:
+        print("   ✅ Pushed to GitHub")
+    else:
+        print("   ℹ️ No push (add GitHub token or run git locally on your machine).")
+except Exception as _e:
+    print("   ℹ️ Git not configured:", str(_e)[:120])
+
+# Upload plots to HF Space (optional; needs HF write token)
+if HF_TOKEN:
+    try:
+        from huggingface_hub import HfApi
+        api = HfApi(token=HF_TOKEN)
+        for plot_file in ["reward_curve.png", "component_rewards.png", "baseline_vs_trained.png", "localization_accuracy.png", "training_log.csv"]:
+            plot_path = RESULTS_DIR / plot_file
+            if plot_path.exists():
+                api.upload_file(
+                    path_or_fileobj=str(plot_path),
+                    path_in_repo=f"results/{plot_file}",
+                    repo_id=HF_REPO,
+                    repo_type="space",
+                )
+        print("   ✅ Results uploaded to Hugging Face Space")
+    except Exception as e:
+        print(f"   ⚠️ HF upload failed: {e}")
+else:
+    print("   ℹ️ HF_TOKEN not set — upload skipped (plots remain under results/)")
 
 # ═══════════════════════════════════════════════════════════════════════
 # CELL 14: Final summary
