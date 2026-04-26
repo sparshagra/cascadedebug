@@ -21,6 +21,11 @@ import time
 from pathlib import Path
 from datetime import datetime
 
+try:
+    import torch
+except ImportError:
+    torch = None
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Configuration
 # ──────────────────────────────────────────────────────────────────────────────
@@ -355,8 +360,8 @@ def main():
                 max_steps=MAX_STEPS,
                 logging_steps=LOG_EVERY,
                 save_steps=SAVE_EVERY,
-                fp16=not torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False,
-                bf16=torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False,
+                fp16=not torch.cuda.is_bf16_supported() if (torch and torch.cuda.is_available()) else False,
+                bf16=torch.cuda.is_bf16_supported() if (torch and torch.cuda.is_available()) else False,
                 gradient_accumulation_steps=4,
                 warmup_ratio=0.1,
                 optim="adamw_8bit",

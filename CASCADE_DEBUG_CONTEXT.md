@@ -283,7 +283,9 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 
 | Date | Issue | Fix Applied |
 |------|-------|-------------|
-| — | — | — |
+| 2026-04-26 | `train_grpo.py` references `torch` without importing it — crashes on GPU path | Added `try: import torch` at top of file with None fallback; guarded CUDA checks |
+| 2026-04-26 | `results/` dir empty — Phase 8 baseline plots were generated but never committed | **ACTION NEEDED**: Re-run baseline (`python training/train_grpo.py baseline`) and commit PNGs |
+| 2026-04-26 | `verifiers.py` role-specific verifiers are dead code — never called by `rewards.py` | Non-blocking: `reward_fix()` does its own keyword/similarity scoring. Consider wiring verifiers in future |
 
 ---
 
@@ -301,6 +303,7 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 6 DONE: All 6 hacking checks passed — uniform injection (χ²<4 per length), role balance (<40%), keyword quality, corruption verified |
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 8 DONE: Baseline plots generated — reward_curve.png, component_rewards.png, baseline_vs_trained.png. Baseline: L1=0.34, L2=0.30, L3=0.25 |
 | 2026-04-25 | 0ea13437-d759-4caf-9099-c4027f9eedd9 | Phase 7 READY: Colab script (train_grpo_colab.py) + notebook (CascadeDebug_GRPO_Training.ipynb) created, pushed to GitHub. Config: 300 steps, Qwen2.5-3B-Instruct 4bit, GRPO group=4. User needs to run on Colab T4 |
+| 2026-04-26 | (pre-Phase-7 audit) | Full repo audit: fixed torch import crash in train_grpo.py, flagged empty results/ dir (plots never committed), noted verifiers.py is dead code. All other files clean — ready for Phase 7 |
 
 ---
 
