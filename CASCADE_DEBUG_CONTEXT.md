@@ -152,7 +152,7 @@ The full technical specification is stored in this file (see below) and was also
 | 4 | Deploy to HF Spaces | ✅ DONE | Agent | https://huggingface.co/spaces/Dikshita2026/cascadedebug (cpu-basic, free) |
 | 5 | Training Script | ✅ DONE | Agent | train_grpo.py: GRPO + Unsloth + offline baseline mode |
 | 6 | Inspect for Hacking | ✅ DONE | Agent | All 6 checks passed: uniform injection, role balance, keyword quality |
-| 7 | Full Training Run | 🔄 IN PROGRESS | Team | **Colab:** `training/colab_phase7/Phase7_GRPO_Colab.ipynb` + `train_grpo_colab.py` — default `PROFILE = "submission"` (3B, 90 steps, comp_len 160, &lt;~3h T4) or `PROFILE = "full"` (7B, 300). `mergekit` + `huggingface_hub` in pip. HF Spaces optional. |
+| 7 | Full Training Run | 🔄 IN PROGRESS | Team | **Colab:** `colab_phase7/Phase7_GRPO_Colab.ipynb` + `train_grpo_colab.py` — default `PROFILE = "submission"`: **7B**, **150** train steps, comp 256, grad_accum 8 (~**3h** T4, half of 300-step run). `full` = 7B/300; `light` = 3B/90. `mergekit` in pip. |
 | 8 | Baseline Comparison | ✅ DONE | Agent | Baseline plots generated: L1=0.34, L2=0.30, L3=0.25 |
 | 9 | Demo + Writeup | ⬜ NOT STARTED | Person D / Agent | Video + README |
 | 10 | Final Checks | ⬜ NOT STARTED | All | Submission gate |
@@ -311,7 +311,7 @@ Partial credit on r1 only at curriculum Level 1: ±1 step → 0.3 reward.
 | 2026-04-26 | (Cursor agent) | Phase 7 deploy: `training/hf_space` fixed — `data/pipeline_bank.json` in bundle, `gradio` in requirements. **Prefer fresh Space** [Dikshita2026/cascadedebug-training-v2](https://huggingface.co/spaces/Dikshita2026/cascadedebug-training-v2) (Gradio SDK, L4, 3B). **Rotate HF token** if it was shared. |
 | 2026-04-26 | (pre-Phase-7 audit) | Full repo audit: fixed torch import crash in train_grpo.py, flagged empty results/ dir (plots never committed), noted verifiers.py is dead code. All other files clean — ready for Phase 7 |
 | 2026-04-26 | (Cursor agent) | Phase 7 Colab: added `training/colab_phase7/Phase7_GRPO_Colab.ipynb`; `train_grpo_colab.py` — 7B, `mergekit`, `NUM_GENERATIONS=2`, `GRADIENT_ACCUMULATION=8`, `MAX_COMPLETION_LENGTH=256`; optional HF push only if `HF_TOKEN` set; git push best-effort. |
-| 2026-04-27 | (Cursor agent) | Colab `submission` profile: 3B, 90 steps, comp_len 160, grad_accum 4, dataset 250 — target &lt;3h T4; `PROFILE = "full"` → 7B/300; `huggingface_hub` in install; pushed to `main`. |
+| 2026-04-27 | (Cursor agent) | Colab: `submission` = **7B, 150 train steps** (~3h T4), comp 256, grad_accum 8; `light` = 3B/90; `full` = 7B/300. Notebook + `train_grpo_colab.py` updated, pushed. | 
 
 ---
 

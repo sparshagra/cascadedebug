@@ -6,8 +6,8 @@ Use `training/colab_phase7/Phase7_GRPO_Colab.ipynb` in Google Colab, or run
 this file with:  python training/train_grpo_colab.py
 
 - **mergekit** is required: TRL's GRPOTrainer imports it.
-- Set `PROFILE` below: `"submission"` = 3B, 90 steps (typically under 3h on Colab T4). `"full"` = 7B+300
-  steps (aligned with `train_gpu.py`, long on T4).
+- `PROFILE = "submission"` default: **7B, 150 steps** (GRPO *optimizer steps*), ~2.5-3.5h T4 —
+  same ratio as 300-step run / 2. `"full"` = 7B/300 (train_gpu parity, ~5-6h+ T4). `"light"` = 3B/90, ~30min.
 """
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -88,12 +88,13 @@ for level, eps in sorted(BANK_BY_LEVEL.items()):
 # CELL 3: Configuration
 # ═══════════════════════════════════════════════════════════════════════
 
-# "submission" = 3B + 90 steps + shorter completions (typ. ~1–2.5h T4, under 3h with margin)
-# "full"       = 7B + 300 steps (context / train_gpu parity; 5–7h+ on T4 is common)
+# submission = 7B + 150 train steps, matches ~3h wall clock on many T4s (50% of a 6h/300-step run)
+# full         = 7B + 300  (aligns with train_gpu.py; often ~5-6h+ T4)
+# light        = 3B + 90   (quick test)
 PROFILE = "submission"
 
-if PROFILE not in ("submission", "full"):
-    raise ValueError('PROFILE must be "submission" or "full"')
+if PROFILE not in ("submission", "full", "light"):
+    raise ValueError('PROFILE must be "submission", "full", or "light"')
 
 MAX_SEQ_LENGTH = 2048
 LORA_R = 16
@@ -109,7 +110,14 @@ if PROFILE == "full":
     GRADIENT_ACCUMULATION = 8
     SAVE_EVERY = 50
     DATASET_SAMPLES = 500
-else:
+elif PROFILE == "submission":
+    MODEL_NAME = "unsloth/Qwen2.5-7B-Instruct-bnb-4bit"
+    MAX_STEPS = 150
+    MAX_COMPLETION_LENGTH = 256
+    GRADIENT_ACCUMULATION = 8
+    SAVE_EVERY = 30
+    DATASET_SAMPLES = 500
+else:  # light
     MODEL_NAME = "unsloth/Qwen2.5-3B-Instruct-bnb-4bit"
     MAX_STEPS = 90
     MAX_COMPLETION_LENGTH = 160
