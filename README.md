@@ -88,19 +88,31 @@ CascadeDebug is the first RL training environment that:
 
 ---
 
-## Results
+## Training
 
-> 📊 Training results will be added here after Phase 7 (onsite, 25–26 April 2026).
+- **Model:** Qwen2.5-7B-Instruct (4-bit via [Unsloth](https://github.com/unslothai/unsloth))
+- **Algorithm:** GRPO (Group Relative Policy Optimization) via [TRL](https://huggingface.co/docs/trl)
+- **Hardware:** Google Colab T4 GPU (free tier)
+- **Config:** 150 optimizer steps, group size 2, gradient accumulation 8, max completion 256 tokens
+- **Curriculum:** 3 levels (3-step easy → 4-step medium → 5–6-step hard), auto-advance on rolling reward threshold
 
-| Metric | Untrained Baseline | After Level 1 | After Level 2 |
-|--------|-------------------|---------------|---------------|
-| Avg total reward | ~0.10–0.20 | ~0.40–0.55 | ~0.55–0.70 |
-| Localization accuracy | ~0.33 (random) | ~0.60 | ~0.70 |
-| Gatekeeper accept rate | ~0.20 | ~0.50 | ~0.65 |
+### Results
 
-**Reward curve:** *(image to be added after training)*
+**Reward curve** — total reward (weighted sum of 4 signals) over 150 GRPO steps:
 
-**Baseline vs trained:** *(image to be added after training)*
+![Reward Curve](results/reward_curve.png)
+
+**Component rewards** — each of the 4 independent reward signals over training:
+
+![Component Rewards](results/component_rewards.png)
+
+**Fault localization accuracy** — rolling accuracy vs random baseline (1/3):
+
+![Localization Accuracy](results/localization_accuracy.png)
+
+**Untrained vs trained** — early 20% vs late 20% of training, grouped by curriculum level:
+
+![Baseline vs Trained](results/baseline_vs_trained.png)
 
 ---
 
@@ -108,10 +120,10 @@ CascadeDebug is the first RL training environment that:
 
 | Resource | URL |
 |----------|-----|
-| 🤗 HuggingFace Space | https://huggingface.co/spaces/Dikshita2026/cascadedebug |
-| 📓 Colab Training Notebook | *TBD — Phase 5* |
-| 🎬 YouTube Demo (<2 min) | *TBD — Phase 9* |
-| 📝 HuggingFace Mini-Blog | *TBD — Phase 9* |
+| 🤗 HuggingFace Space (environment) | [Dikshita2026/cascadedebug](https://huggingface.co/spaces/Dikshita2026/cascadedebug) |
+| 📓 Colab Training Notebook | [Phase7_GRPO_Colab.ipynb](training/colab_phase7/Phase7_GRPO_Colab.ipynb) — upload to Colab, set T4, run all cells |
+| 📝 HuggingFace Mini-Blog | [Dikshita2026/cascadedebug-blog](https://huggingface.co/spaces/Dikshita2026/cascadedebug-blog) |
+| 💻 GitHub Repo | [sparshagra/cascadedebug](https://github.com/sparshagra/cascadedebug) |
 
 ---
 
@@ -135,7 +147,9 @@ cascade_debug/
 │   ├── pipeline_bank.json             # 1000 pre-computed episodes (Phase 1)
 │   └── generate_pipeline_bank.py      # Offline generation script
 ├── training/
-│   └── train_grpo.ipynb               # GRPO training notebook (Phase 5)
+│   ├── colab_phase7/Phase7_GRPO_Colab.ipynb  # Upload this to Colab for training
+│   ├── train_grpo_colab.py                   # GRPO training script (PROFILE = submission|full|light)
+│   └── train_grpo.py                         # Standalone training / baseline script
 └── results/
     ├── reward_curve.png               # Main hero plot
     ├── baseline_vs_trained.png        # Comparison plot
