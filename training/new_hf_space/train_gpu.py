@@ -41,6 +41,35 @@ def log(msg: str) -> None:
     log_queue.put(str(msg))
 
 
+def _resolve_compute_dtype(torch_module):
+    """
+    Choose bf16 on Ampere+ (L4, A100, etc.) when supported, else fp16.
+    HF Spaces may run Python 3.13 + latest torch; fp16 + 4-bit + GRPO can
+    leave LoRA weights in float32 while activations are half — Unsloth's
+    fast matmul_lora then raises: Half vs Float.
+    """
+    major, _minor = torch_module.cuda.get_device_capability(0)
+    if major >= 8 and torch_module.cuda.is_bf16_supported():
+        return torch_module.bfloat16, True
+    if torch_module.cuda.is_bf16_supported():
+        return torch_module.bfloat16, True
+    return torch_module.float16, False
+
+
+def _cast_trainable_lora_to(model, torch_dtype) -> int:
+    """Force LoRA adapter weights to match compute dtype (fixes Half/Float in fast_lora)."""
+    n = 0
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if "lora" not in name.lower():
+            continue
+        if param.data.dtype != torch_dtype:
+            param.data = param.data.to(torch_dtype)
+            n += 1
+    return n
+
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -570,8 +599,11 @@ def run() -> None:
         torch.backends.cudnn.benchmark = True
         torch.cuda.empty_cache()
 
-        use_bf16 = torch.cuda.is_bf16_supported()
-        log(f"   Mixed precision: {'bf16' if use_bf16 else 'fp16'}")
+        compute_dtype, use_bf16 = _resolve_compute_dtype(torch)
+        log(
+            f"   Compute dtype: {compute_dtype}  |  "
+            f"GRPOConfig bf16={use_bf16} fp16={not use_bf16}"
+        )
 
         # Load pipeline bank
         log("\n📦 Loading pipeline bank...")
@@ -597,7 +629,7 @@ def run() -> None:
             model_name=MODEL_NAME,
             max_seq_length=MAX_SEQ_LENGTH,
             load_in_4bit=True,
-            dtype=None,
+            dtype=compute_dtype,
         )
 
         model = FastLanguageModel.get_peft_model(
@@ -613,6 +645,10 @@ def run() -> None:
             use_gradient_checkpointing="unsloth",
             random_state=42,
         )
+
+        n_lora_cast = _cast_trainable_lora_to(model, compute_dtype)
+        if n_lora_cast:
+            log(f"   Cast {n_lora_cast} trainable LoRA tensors → {compute_dtype} (dtype alignment)")
 
         free_gb = (
             torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated(0)
