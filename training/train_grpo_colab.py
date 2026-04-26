@@ -6,8 +6,8 @@ Use `training/colab_phase7/Phase7_GRPO_Colab.ipynb` in Google Colab, or run
 this file with:  python training/train_grpo_colab.py
 
 - **mergekit** is required: TRL's GRPOTrainer imports it.
-- `PROFILE = "submission"` default: **7B, 150 steps** (GRPO *optimizer steps*), ~2.5-3.5h T4 —
-  same ratio as 300-step run / 2. `"full"` = 7B/300 (train_gpu parity, ~5-6h+ T4). `"light"` = 3B/90, ~30min.
+- `PROFILE = "submission"` default: **7B, 500 steps** (~12-16h on T4 / ~10h on L4).
+  `"full"` = 7B/300 (legacy, shorter). `"light"` = 3B/90 (~30min smoke test).
 """
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -112,10 +112,10 @@ if PROFILE == "full":
     DATASET_SAMPLES = 500
 elif PROFILE == "submission":
     MODEL_NAME = "unsloth/Qwen2.5-7B-Instruct-bnb-4bit"
-    MAX_STEPS = 150
+    MAX_STEPS = 500
     MAX_COMPLETION_LENGTH = 256
     GRADIENT_ACCUMULATION = 8
-    SAVE_EVERY = 30
+    SAVE_EVERY = 50
     DATASET_SAMPLES = 500
 else:  # light
     MODEL_NAME = "unsloth/Qwen2.5-3B-Instruct-bnb-4bit"
