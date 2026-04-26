@@ -1,12 +1,31 @@
+# ─── CascadeDebug GRPO Training — HF Space Dependencies ──────────────────────
+# All CUDA packages from the SAME PyTorch index to prevent CUDA version mismatch.
+# The Gradio SDK Space on L4 has NVIDIA drivers pre-installed.
+
+--extra-index-url https://download.pytorch.org/whl/cu124
+
 # Fix Python 3.13 audioop removal (breaks pydub which gradio imports)
 audioop-lts; python_version >= "3.13"
 
-# Minimal build-time deps — ONLY what Gradio UI needs to start
+# Core ML — all from cu124 index for consistent CUDA versions
+torch>=2.5.0
+torchvision>=0.20.0
+torchaudio>=2.5.0
+
+# Unsloth for 4-bit quantization
+unsloth
+
+# Training
+trl>=0.12.0
+datasets
+accelerate>=0.30.0
+peft>=0.10.0
+bitsandbytes>=0.43.0
+scipy
+
+# Plotting
 matplotlib>=3.7.0
 numpy>=1.24.0
 
-# DO NOT pin huggingface_hub here — gradio 4.44.0 needs a specific
-# compatible version and will install it automatically.
-
-# ALL ML deps (torch, trl, unsloth, etc.) are installed at RUNTIME
-# inside train_gpu.py when the T4 GPU is live
+# Hub push
+huggingface_hub
