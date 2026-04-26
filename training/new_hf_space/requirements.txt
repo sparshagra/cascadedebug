@@ -1,4 +1,7 @@
-unsloth
+# Pin recent Unsloth — GRPO + 4-bit dtype fixes (e.g. PR #4005, issues #4891 / #4918).
+# Unpinned `unsloth` on HF Spaces often lags and hits matmul_lora Half vs Float.
+unsloth>=2026.4.8
+unsloth_zoo>=2026.4.9
 trl>=0.12.0
 datasets
 peft>=0.10.0

@@ -41,33 +41,21 @@ def log(msg: str) -> None:
     log_queue.put(str(msg))
 
 
-def _resolve_compute_dtype(torch_module):
+def _resolve_grpo_precision(torch_module):
     """
-    Choose bf16 on Ampere+ (L4, A100, etc.) when supported, else fp16.
-    HF Spaces may run Python 3.13 + latest torch; fp16 + 4-bit + GRPO can
-    leave LoRA weights in float32 while activations are half — Unsloth's
-    fast matmul_lora then raises: Half vs Float.
+    Unsloth 4-bit + GRPO + fast LoRA: fp16 autocast with float32 LoRA is easy to break
+    (RuntimeError: Half vs Float in matmul_lora). Unsloth expects LoRA A/B in float32
+    under mixed precision — do NOT downcast LoRA weights.
+
+    Fix strategy (see unslothai/unsloth PR #4005, issues #4891, #4918):
+    - Prefer bf16 end-to-end when supported (L4 / Ampere+).
+    - Never use fp16=True in TRL for this stack when bf16 is available.
+    - If bf16 is unavailable, use float32 compute + UNSLOTH_FORCE_FLOAT32 (docs).
     """
-    major, _minor = torch_module.cuda.get_device_capability(0)
-    if major >= 8 and torch_module.cuda.is_bf16_supported():
-        return torch_module.bfloat16, True
     if torch_module.cuda.is_bf16_supported():
-        return torch_module.bfloat16, True
-    return torch_module.float16, False
-
-
-def _cast_trainable_lora_to(model, torch_dtype) -> int:
-    """Force LoRA adapter weights to match compute dtype (fixes Half/Float in fast_lora)."""
-    n = 0
-    for name, param in model.named_parameters():
-        if not param.requires_grad:
-            continue
-        if "lora" not in name.lower():
-            continue
-        if param.data.dtype != torch_dtype:
-            param.data = param.data.to(torch_dtype)
-            n += 1
-    return n
+        return torch_module.bfloat16, True, False
+    os.environ["UNSLOTH_FORCE_FLOAT32"] = "1"
+    return torch_module.float32, False, False
 
 
 # ---------------------------------------------------------------------------
@@ -580,6 +568,9 @@ def run() -> None:
     training_state["status"] = "running"
 
     try:
+        # Before importing Unsloth: reduce torch.compile / cache weirdness on HF (docs.unsloth.ai env flags).
+        os.environ.setdefault("UNSLOTH_COMPILE_DISABLE", "1")
+
         log("=" * 60)
         log("CascadeDebug GRPO Training — HF Spaces L4 GPU")
         log("=" * 60)
@@ -599,11 +590,11 @@ def run() -> None:
         torch.backends.cudnn.benchmark = True
         torch.cuda.empty_cache()
 
-        compute_dtype, use_bf16 = _resolve_compute_dtype(torch)
-        log(
-            f"   Compute dtype: {compute_dtype}  |  "
-            f"GRPOConfig bf16={use_bf16} fp16={not use_bf16}"
-        )
+        compute_dtype, use_bf16, use_fp16 = _resolve_grpo_precision(torch)
+        if os.environ.get("UNSLOTH_FORCE_FLOAT32") == "1":
+            log("   Precision: float32 + UNSLOTH_FORCE_FLOAT32 (bf16 not available on this GPU)")
+        else:
+            log(f"   Precision: {compute_dtype} | TRL bf16={use_bf16} fp16={use_fp16}")
 
         # Load pipeline bank
         log("\n📦 Loading pipeline bank...")
@@ -630,6 +621,7 @@ def run() -> None:
             max_seq_length=MAX_SEQ_LENGTH,
             load_in_4bit=True,
             dtype=compute_dtype,
+            fast_inference=False,
         )
 
         model = FastLanguageModel.get_peft_model(
@@ -645,10 +637,6 @@ def run() -> None:
             use_gradient_checkpointing="unsloth",
             random_state=42,
         )
-
-        n_lora_cast = _cast_trainable_lora_to(model, compute_dtype)
-        if n_lora_cast:
-            log(f"   Cast {n_lora_cast} trainable LoRA tensors → {compute_dtype} (dtype alignment)")
 
         free_gb = (
             torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated(0)
@@ -673,7 +661,7 @@ def run() -> None:
             max_steps=MAX_STEPS,
             logging_steps=LOG_EVERY,
             save_steps=SAVE_EVERY,
-            fp16=not use_bf16,
+            fp16=use_fp16,
             bf16=use_bf16,
             gradient_accumulation_steps=GRADIENT_ACCUM,
             warmup_ratio=0.1,

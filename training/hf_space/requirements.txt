@@ -12,8 +12,9 @@ torch>=2.5.0
 torchvision>=0.20.0
 torchaudio>=2.5.0
 
-# Unsloth for 4-bit quantization
-unsloth
+# Pin recent Unsloth — GRPO + 4-bit dtype fixes (PR #4005, issues #4891 / #4918).
+unsloth>=2026.4.8
+unsloth_zoo>=2026.4.9
 
 # UI (Gradio 5 — app.py uses gr.Blocks, gr.Timer, etc.)
 gradio>=5.25.0

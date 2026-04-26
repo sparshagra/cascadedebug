@@ -25,27 +25,15 @@ def log(msg: str) -> None:
     log_queue.put(str(msg))
 
 
-def _resolve_compute_dtype(torch_module):
-    """bf16 on Ampere+ when possible; avoids Unsloth fast LoRA Half vs Float matmul errors."""
-    major, _minor = torch_module.cuda.get_device_capability(0)
-    if major >= 8 and torch_module.cuda.is_bf16_supported():
-        return torch_module.bfloat16, True
+def _resolve_grpo_precision(torch_module):
+    """
+    Unsloth 4-bit + GRPO: do not fp16-train or downcast LoRA — breaks matmul_lora (Half vs Float).
+    Prefer bf16 when supported; else float32 + UNSLOTH_FORCE_FLOAT32 (Unsloth docs).
+    """
     if torch_module.cuda.is_bf16_supported():
-        return torch_module.bfloat16, True
-    return torch_module.float16, False
-
-
-def _cast_trainable_lora_to(model, torch_dtype) -> int:
-    n = 0
-    for name, param in model.named_parameters():
-        if not param.requires_grad:
-            continue
-        if "lora" not in name.lower():
-            continue
-        if param.data.dtype != torch_dtype:
-            param.data = param.data.to(torch_dtype)
-            n += 1
-    return n
+        return torch_module.bfloat16, True, False
+    os.environ["UNSLOTH_FORCE_FLOAT32"] = "1"
+    return torch_module.float32, False, False
 
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -372,6 +360,8 @@ def run() -> None:
     training_state["status"] = "running"
 
     try:
+        os.environ.setdefault("UNSLOTH_COMPILE_DISABLE", "1")
+
         import torch
         import numpy as np
 
@@ -390,11 +380,11 @@ def run() -> None:
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.benchmark = True
         torch.cuda.empty_cache()
-        compute_dtype, use_bf16 = _resolve_compute_dtype(torch)
-        log(
-            f"   Compute dtype: {compute_dtype}  |  "
-            f"GRPOConfig bf16={use_bf16} fp16={not use_bf16}"
-        )
+        compute_dtype, use_bf16, use_fp16 = _resolve_grpo_precision(torch)
+        if os.environ.get("UNSLOTH_FORCE_FLOAT32") == "1":
+            log("   Precision: float32 + UNSLOTH_FORCE_FLOAT32 (bf16 not available)")
+        else:
+            log(f"   Precision: {compute_dtype} | TRL bf16={use_bf16} fp16={use_fp16}")
 
         # ── Load pipeline bank ────────────────────────────────────────────
         log("\n📦 Loading pipeline bank...")
@@ -412,7 +402,7 @@ def run() -> None:
 
         model, tokenizer = FastLanguageModel.from_pretrained(
             model_name=MODEL_NAME, max_seq_length=MAX_SEQ_LENGTH,
-            load_in_4bit=True, dtype=compute_dtype,
+            load_in_4bit=True, dtype=compute_dtype, fast_inference=False,
         )
         model = FastLanguageModel.get_peft_model(
             model, r=LORA_R, lora_alpha=LORA_ALPHA,
@@ -420,9 +410,6 @@ def run() -> None:
             lora_dropout=0, bias="none",
             use_gradient_checkpointing="unsloth", random_state=42,
         )
-        n_lora = _cast_trainable_lora_to(model, compute_dtype)
-        if n_lora:
-            log(f"   Cast {n_lora} trainable LoRA tensors → {compute_dtype}")
         free_gb = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated(0)) / 1024**3
         log(f"✅ Model + LoRA ready | Free VRAM: {free_gb:.1f} GB")
 
@@ -440,7 +427,7 @@ def run() -> None:
             num_generations=NUM_GENERATIONS, max_completion_length=MAX_COMPLETION_LEN,
             max_prompt_length=MAX_SEQ_LENGTH - MAX_COMPLETION_LEN,
             max_steps=MAX_STEPS, logging_steps=LOG_EVERY, save_steps=SAVE_EVERY,
-            fp16=not use_bf16, bf16=use_bf16,
+            fp16=use_fp16, bf16=use_bf16,
             gradient_accumulation_steps=GRADIENT_ACCUM, warmup_ratio=0.1,
             optim="adamw_8bit", seed=42, report_to="none",
             remove_unused_columns=False, log_level="warning",
