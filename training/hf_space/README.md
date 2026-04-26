@@ -15,7 +15,7 @@ license: mit
 
 This HuggingFace Space runs **GRPO training** for the CascadeDebug RL environment.
 
-- **Model:** `Qwen2.5-3B-Instruct` (4-bit via Unsloth)
+- **Model:** `Qwen2.5-7B-Instruct` (4-bit via Unsloth)
 - **Algorithm:** GRPO (Group Relative Policy Optimization)
 - **Task:** Multi-agent pipeline fault localization
 - **GPU:** L4 (24GB VRAM, Ada Lovelace)
